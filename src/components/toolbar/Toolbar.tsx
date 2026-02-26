@@ -4,9 +4,10 @@ import { Icons } from '../../theme/icons';
 import { FONT_FAMILY, FONT_FAMILY_BRAND, TOOLBAR_HEIGHT } from '../../theme/tokens';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
+import { Select } from '../ui/Select';
 import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
-import { useUIStore } from '../../store/uiStore';
+import { useUIStore, COMPOSITION_PRESETS } from '../../store/uiStore';
 import { createElement } from '../../utils/elementFactory';
 import { formatTime } from '../../utils/formatTime';
 import { saveProject, exportProjectJSON, importProjectJSON } from '../../services/projectService';
@@ -23,6 +24,10 @@ export function Toolbar() {
   const showSubtitleEditor = useUIStore((s) => s.showSubtitleEditor);
   const toggleAutoCut = useUIStore((s) => s.toggleAutoCut);
   const showAutoCut = useUIStore((s) => s.showAutoCut);
+  const setShowNewProjectDialog = useUIStore((s) => s.setShowNewProjectDialog);
+  const canvasWidth = useUIStore((s) => s.canvasWidth);
+  const canvasHeight = useUIStore((s) => s.canvasHeight);
+  const setCanvasSize = useUIStore((s) => s.setCanvasSize);
 
   const { undo, redo } = useElementStore.temporal.getState();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -39,6 +44,8 @@ export function Toolbar() {
     const el = createElement(type, { startTime: currentTime });
     addElement(el);
   };
+
+  const currentSizeKey = `${canvasWidth}x${canvasHeight}`;
 
   return (
     <div
@@ -74,6 +81,9 @@ export function Toolbar() {
 
       <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
 
+      <Button small onClick={() => setShowNewProjectDialog(true)} title="New project">
+        <Icon d={Icons.zap} size={13} /> New
+      </Button>
       <Button small onClick={handleSave} title="Save project (Ctrl+S)">
         <Icon d={Icons.download} size={13} /> Save
       </Button>
@@ -86,6 +96,22 @@ export function Toolbar() {
         accept=".json"
         style={{ display: 'none' }}
         onChange={handleFileChange}
+      />
+
+      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
+
+      {/* Canvas size / aspect ratio */}
+      <Select
+        value={currentSizeKey}
+        onChange={(v) => {
+          const [w, h] = v.split('x').map(Number);
+          setCanvasSize(w, h);
+        }}
+        options={COMPOSITION_PRESETS.map((p) => ({
+          label: `${p.label} — ${p.platform}`,
+          value: `${p.width}x${p.height}`,
+        }))}
+        style={{ fontSize: 10, minWidth: 160 }}
       />
 
       <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />

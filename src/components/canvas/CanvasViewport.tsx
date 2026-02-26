@@ -8,7 +8,7 @@ import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { useMediaStore } from '../../store/mediaStore';
 import { useTimelineStore } from '../../store/timelineStore';
-import { CANVAS_RESOLUTION } from '../../theme/tokens';
+// Canvas size now driven by uiStore (dynamic composition)
 import { clamp } from '../../utils/math';
 import { getAnimTransform, getExitAnimTransform } from '../../utils/animation';
 import { createVideoElement, createImageElement, createAudioElement } from '../../utils/elementFactory';
@@ -28,6 +28,9 @@ export function CanvasViewport() {
   const deselectAll = useElementStore((s) => s.deselectAll);
   const currentTime = usePlaybackStore((s) => s.currentTime);
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const canvasWidth = useUIStore((s) => s.canvasWidth);
+  const canvasHeight = useUIStore((s) => s.canvasHeight);
+  const canvasBgColor = useUIStore((s) => s.canvasBgColor);
 
   const dragRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
   const resizeRef = useRef<{ id: string } | null>(null);
@@ -45,8 +48,16 @@ export function CanvasViewport() {
   );
 
   const onMouseDown = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const elId = target.dataset?.elid;
+    // Walk up DOM tree to find element with data-elid
+    let node = e.target as HTMLElement | null;
+    let elId: string | undefined;
+    while (node && node !== canvasRef.current) {
+      if (node.dataset?.elid) {
+        elId = node.dataset.elid;
+        break;
+      }
+      node = node.parentElement;
+    }
     const pos = getCanvasPos(e);
 
     if (elId) {
@@ -57,7 +68,7 @@ export function CanvasViewport() {
       } else if (el) {
         selectElement(elId, e.shiftKey);
       }
-    } else if (target === canvasRef.current) {
+    } else if (e.target === canvasRef.current) {
       deselectAll();
     }
   };
@@ -334,8 +345,17 @@ export function CanvasViewport() {
   const onContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      const target = e.target as HTMLElement;
-      const elId = target.dataset?.elid || null;
+      e.stopPropagation();
+      // Walk up DOM tree to find element with data-elid (handles clicks on child nodes like <video>, <span>)
+      let node = e.target as HTMLElement | null;
+      let elId: string | null = null;
+      while (node && node !== e.currentTarget) {
+        if (node.dataset?.elid) {
+          elId = node.dataset.elid;
+          break;
+        }
+        node = node.parentElement;
+      }
       if (elId) selectElement(elId);
       openContextMenu(e.clientX, e.clientY, elId, elId ? 'element' : 'canvas');
     },
@@ -369,9 +389,9 @@ export function CanvasViewport() {
           top: '50%',
           transform: `translate(-50%, -50%) scale(${displayScale})`,
           transformOrigin: 'center center',
-          width: CANVAS_RESOLUTION.width,
-          height: CANVAS_RESOLUTION.height,
-          background: C.canvasBg,
+          width: canvasWidth,
+          height: canvasHeight,
+          background: canvasBgColor,
           borderRadius: 8,
           boxShadow: `0 0 60px rgba(0,0,0,0.5), 0 0 0 1px ${C.border}`,
           overflow: 'hidden',

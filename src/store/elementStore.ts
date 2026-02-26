@@ -15,6 +15,7 @@ interface ElementActions {
   deleteElements: (ids: string[]) => void;
   duplicateElements: (ids: string[]) => void;
   setElements: (els: Element[]) => void;
+  clearAll: () => void;
   selectElement: (id: string, additive?: boolean) => void;
   deselectAll: () => void;
   selectAll: () => void;
@@ -60,6 +61,8 @@ export const useElementStore = create<ElementStore>()(
       },
 
       setElements: (els) => set({ elements: els }),
+
+      clearAll: () => set({ elements: [], selectedIds: new Set() }),
 
       selectElement: (id, additive = false) =>
         set((s) => {

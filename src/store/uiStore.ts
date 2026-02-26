@@ -13,14 +13,37 @@ interface ContextMenuState {
   targetType: 'element' | 'clip' | 'canvas' | 'media' | null;
 }
 
+// Composition presets with platform labels
+export interface CompositionPreset {
+  label: string;
+  width: number;
+  height: number;
+  platform?: string;
+}
+
+export const COMPOSITION_PRESETS: CompositionPreset[] = [
+  { label: '1920 × 1080', width: 1920, height: 1080, platform: 'YouTube / Full HD' },
+  { label: '1080 × 1920', width: 1080, height: 1920, platform: 'TikTok / Reels / Shorts' },
+  { label: '1080 × 1080', width: 1080, height: 1080, platform: 'Instagram Feed / X' },
+  { label: '1080 × 1350', width: 1080, height: 1350, platform: 'Instagram Feed (4:5)' },
+  { label: '3840 × 2160', width: 3840, height: 2160, platform: '4K UHD' },
+  { label: '1280 × 720', width: 1280, height: 720, platform: 'HD 720p' },
+  { label: '2560 × 1080', width: 2560, height: 1080, platform: 'Cinematic 21:9' },
+  { label: '1440 × 1080', width: 1440, height: 1080, platform: 'Standard 4:3' },
+];
+
 interface UIState {
   activeTab: PanelTab;
   showGrid: boolean;
   showMediaBin: boolean;
   showSubtitleEditor: boolean;
   showAutoCut: boolean;
+  showNewProjectDialog: boolean;
   contextMenu: ContextMenuState;
   zoom: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  canvasBgColor: string;
   exportDialogOpen: boolean;
   timelineTool: TimelineTool;
 }
@@ -31,9 +54,12 @@ interface UIActions {
   toggleMediaBin: () => void;
   toggleSubtitleEditor: () => void;
   toggleAutoCut: () => void;
+  setShowNewProjectDialog: (show: boolean) => void;
   openContextMenu: (x: number, y: number, targetId: string | null, targetType: ContextMenuState['targetType']) => void;
   closeContextMenu: () => void;
   setZoom: (z: number) => void;
+  setCanvasSize: (width: number, height: number) => void;
+  setCanvasBgColor: (color: string) => void;
   setExportDialogOpen: (open: boolean) => void;
   setTimelineTool: (tool: TimelineTool) => void;
 }
@@ -46,8 +72,12 @@ export const useUIStore = create<UIStore>()((set) => ({
   showMediaBin: true,
   showSubtitleEditor: false,
   showAutoCut: false,
+  showNewProjectDialog: false,
   contextMenu: { visible: false, x: 0, y: 0, targetId: null, targetType: null },
-  zoom: 1,
+  zoom: 0.5,
+  canvasWidth: 1920,
+  canvasHeight: 1080,
+  canvasBgColor: '#111827',
   exportDialogOpen: false,
   timelineTool: 'select',
 
@@ -56,6 +86,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   toggleMediaBin: () => set((s) => ({ showMediaBin: !s.showMediaBin })),
   toggleSubtitleEditor: () => set((s) => ({ showSubtitleEditor: !s.showSubtitleEditor })),
   toggleAutoCut: () => set((s) => ({ showAutoCut: !s.showAutoCut })),
+  setShowNewProjectDialog: (show) => set({ showNewProjectDialog: show }),
 
   openContextMenu: (x, y, targetId, targetType) =>
     set({ contextMenu: { visible: true, x, y, targetId, targetType } }),
@@ -63,7 +94,9 @@ export const useUIStore = create<UIStore>()((set) => ({
   closeContextMenu: () =>
     set((s) => ({ contextMenu: { ...s.contextMenu, visible: false } })),
 
-  setZoom: (z) => set({ zoom: Math.max(0.2, Math.min(3, z)) }),
+  setZoom: (z) => set({ zoom: Math.max(0.1, Math.min(3, z)) }),
+  setCanvasSize: (width, height) => set({ canvasWidth: width, canvasHeight: height }),
+  setCanvasBgColor: (color) => set({ canvasBgColor: color }),
   setExportDialogOpen: (open) => set({ exportDialogOpen: open }),
   setTimelineTool: (tool) => set({ timelineTool: tool }),
 }));

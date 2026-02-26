@@ -8,6 +8,7 @@ import { PropertiesPanel } from './components/properties/PropertiesPanel';
 import { TimelinePanel } from './components/timeline/TimelinePanel';
 import { MediaBin } from './components/media/MediaBin';
 import { ContextMenu } from './components/ui/ContextMenu';
+import { NewProjectDialog } from './components/ui/NewProjectDialog';
 import { AIAssistant } from './components/ai/AIAssistant';
 import { ExportDialog } from './components/export/ExportDialog';
 import { SubtitleEditor } from './components/subtitles/SubtitleEditor';
@@ -15,91 +16,18 @@ import { AutoCutPanel } from './components/autocut/AutoCutPanel';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
 import { loadProject, startAutosave, stopAutosave } from './services/projectService';
-import { useElementStore } from './store/elementStore';
 import { useUIStore } from './store/uiStore';
-import { createTextElement, createShapeElement } from './utils/elementFactory';
+import { coopAI } from './services/aiEngine';
 
-function loadDefaultScene() {
-  const store = useElementStore.getState();
-  if (store.elements.length > 0) return;
-
-  store.addElements([
-    createShapeElement('shape', {
-      name: 'Background',
-      x: 160,
-      y: 60,
-      width: 1600,
-      height: 960,
-      fill: '#1a1a2e',
-      borderRadius: 24,
-    }),
-    createTextElement({
-      name: 'Title',
-      x: 500,
-      y: 280,
-      width: 900,
-      height: 140,
-      content: 'CONTENT CO-OP',
-      fontSize: 96,
-      fontFamily: 'Arial Black',
-      color: '#ffffff',
-      animation: 'slideLeft',
-      animDuration: 0.8,
-    }),
-    createTextElement({
-      name: 'Subtitle',
-      x: 520,
-      y: 440,
-      width: 860,
-      height: 80,
-      content: 'Video Production Studio',
-      fontSize: 42,
-      fontFamily: 'Georgia',
-      color: C.accent2,
-      fontWeight: 'normal',
-      animation: 'fadeIn',
-      animDuration: 1.0,
-      startTime: 0.4,
-    }),
-    createShapeElement('circle', {
-      name: 'Accent Circle',
-      x: 1300,
-      y: 500,
-      width: 200,
-      height: 200,
-      fill: C.accent,
-      animation: 'scaleUp',
-      startTime: 0.2,
-      opacity: 0.7,
-    }),
-    createShapeElement('shape', {
-      name: 'Divider Line',
-      x: 400,
-      y: 680,
-      width: 1120,
-      height: 4,
-      fill: C.accent,
-      animation: 'slideRight',
-      startTime: 0.6,
-      borderRadius: 2,
-    }),
-    createTextElement({
-      name: 'Tagline',
-      x: 440,
-      y: 740,
-      width: 1040,
-      height: 60,
-      content: 'Drop files  \u2022  Edit  \u2022  Export',
-      fontSize: 32,
-      fontFamily: 'Courier New',
-      color: C.textDim,
-      fontWeight: 'normal',
-      animation: 'typewriter',
-      startTime: 1.0,
-      animDuration: 1.2,
-    }),
-  ]);
-}
+// Configure AI engine from environment variables
+coopAI.configure({
+  apiKeys: {
+    google: import.meta.env.VITE_GOOGLE_API_KEY || '',
+    anthropic: import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+    openai: import.meta.env.VITE_OPENAI_API_KEY || '',
+  },
+  proxyUrl: import.meta.env.VITE_AI_PROXY_URL || undefined,
+});
 
 export default function App() {
   usePlayback();
@@ -110,9 +38,16 @@ export default function App() {
   const showAutoCut = useUIStore((s) => s.showAutoCut);
 
   useEffect(() => {
-    // Try to restore auto-saved project, fall back to default scene
+    // Try to restore auto-saved project. If nothing saved, show blank canvas
     loadProject().then((loaded) => {
-      if (!loaded) loadDefaultScene();
+      if (!loaded) {
+        // Show new project dialog on first visit
+        const hasVisited = localStorage.getItem('coedit-visited');
+        if (!hasVisited) {
+          useUIStore.getState().setShowNewProjectDialog(true);
+          localStorage.setItem('coedit-visited', '1');
+        }
+      }
     });
     startAutosave();
     return () => stopAutosave();
@@ -181,6 +116,7 @@ export default function App() {
         </div>
       )}
       <ContextMenu />
+      <NewProjectDialog />
       <ExportDialog />
       <AIAssistant />
     </div>
