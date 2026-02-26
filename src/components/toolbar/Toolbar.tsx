@@ -27,8 +27,7 @@ export function Toolbar() {
   const { undo, redo } = useElementStore.temporal.getState();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = () => saveProject('My Project');
-  const handleExportJSON = () => exportProjectJSON();
+  const handleSave = () => { saveProject('My Project'); exportProjectJSON(); };
   const handleOpenProject = () => fileInputRef.current?.click();
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

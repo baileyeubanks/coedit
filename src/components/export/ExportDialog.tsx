@@ -4,7 +4,7 @@ import { FONT_FAMILY, FONT_FAMILY_BRAND, FONT_FAMILY_MONO } from '../../theme/to
 import { Icons } from '../../theme/icons';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
-import { NumberInput } from '../ui/NumberInput';
+// NumberInput available for custom resolution
 import { Select } from '../ui/Select';
 import { useUIStore } from '../../store/uiStore';
 import { usePlaybackStore } from '../../store/playbackStore';

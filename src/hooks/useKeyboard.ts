@@ -3,7 +3,7 @@ import { useElementStore } from '../store/elementStore';
 import { usePlaybackStore } from '../store/playbackStore';
 import { useTimelineStore } from '../store/timelineStore';
 import { useUIStore } from '../store/uiStore';
-import { uid } from '../utils/uid';
+// uid available if needed for future clipboard features
 
 /**
  * Global keyboard shortcuts — modeled after Adobe Premiere Pro defaults.
@@ -244,13 +244,13 @@ export function useKeyboard() {
       if (key === 'i' && !isMeta) {
         const ct = usePlaybackStore.getState().currentTime;
         const range = usePlaybackStore.getState().loopRange;
-        usePlaybackStore.getState().setLoopRange([ct, range?.[1] ?? usePlaybackStore.getState().duration]);
+        usePlaybackStore.getState().setLoopRange({ start: ct, end: range?.end ?? usePlaybackStore.getState().duration });
         return;
       }
       if (key === 'o' && !isMeta) {
         const ct = usePlaybackStore.getState().currentTime;
         const range = usePlaybackStore.getState().loopRange;
-        usePlaybackStore.getState().setLoopRange([range?.[0] ?? 0, ct]);
+        usePlaybackStore.getState().setLoopRange({ start: range?.start ?? 0, end: ct });
         return;
       }
 

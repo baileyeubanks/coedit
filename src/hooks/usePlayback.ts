@@ -110,9 +110,12 @@ export function usePlayback() {
   }, []);
 
   useEffect(() => {
-    return usePlaybackStore.subscribe(
-      (state) => state.currentTime,
-      handleSeek,
-    );
+    let prevTime = usePlaybackStore.getState().currentTime;
+    return usePlaybackStore.subscribe((state) => {
+      if (state.currentTime !== prevTime) {
+        prevTime = state.currentTime;
+        handleSeek();
+      }
+    });
   }, [handleSeek]);
 }

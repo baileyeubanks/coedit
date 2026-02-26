@@ -13,7 +13,7 @@ import { useElementStore } from '../../store/elementStore';
 import { useUIStore } from '../../store/uiStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { clamp } from '../../utils/math';
-import { ANIMATIONS, FILTERS, BLEND_MODES, EASING_TYPES } from '../../types';
+import { ANIMATIONS, BLEND_MODES, EASING_TYPES } from '../../types';
 import type { Element } from '../../types';
 
 export function PropertiesPanel() {

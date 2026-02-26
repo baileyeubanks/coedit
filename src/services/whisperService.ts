@@ -124,7 +124,7 @@ export function transcribeWithWebSpeech(
             const now = audioElement.currentTime;
             const wordList = text.split(/\s+/);
             const wordDuration = 0.3; // rough estimate per word
-            wordList.forEach((w, idx) => {
+            wordList.forEach((w: string, idx: number) => {
               words.push({
                 word: w,
                 start: Math.max(0, now - (wordList.length - idx) * wordDuration),
@@ -181,9 +181,7 @@ export function transcribeWithWebSpeech(
 export function segmentText(
   text: string,
   totalDuration: number,
-  options: { maxChars?: number; cueGap?: number } = {},
 ): WhisperWord[] {
-  const maxChars = options.maxChars ?? 60;
   const allWords = text.split(/\s+/).filter(Boolean);
   if (allWords.length === 0) return [];
 

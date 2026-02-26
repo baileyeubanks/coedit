@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback } from 'react';
 import { C } from '../../theme/colors';
 import { Icons } from '../../theme/icons';
 import { Icon } from '../ui/Icon';
@@ -8,13 +8,13 @@ import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { useMediaStore } from '../../store/mediaStore';
 import { useTimelineStore } from '../../store/timelineStore';
-import { CANVAS_RESOLUTION, FONT_FAMILY_MONO } from '../../theme/tokens';
+import { CANVAS_RESOLUTION } from '../../theme/tokens';
 import { clamp } from '../../utils/math';
 import { getAnimTransform, getExitAnimTransform } from '../../utils/animation';
 import { createVideoElement, createImageElement, createAudioElement } from '../../utils/elementFactory';
 import { registerVideo, unregisterVideo } from '../../hooks/usePlayback';
 import { SubtitleOverlay } from '../subtitles/SubtitleOverlay';
-import type { Element, VideoElement as VideoElType } from '../../types';
+import type { Element } from '../../types';
 
 export function CanvasViewport() {
   const canvasRef = useRef<HTMLDivElement>(null);

@@ -1,4 +1,3 @@
-import { C } from '../../theme/colors';
 import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import type { SubtitleElement } from '../../types';

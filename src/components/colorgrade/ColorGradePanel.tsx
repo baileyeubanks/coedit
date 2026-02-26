@@ -4,7 +4,7 @@ import { FONT_FAMILY } from '../../theme/tokens';
 import { Icons } from '../../theme/icons';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
-import { Slider } from '../ui/Slider';
+// Slider available for future use
 import { useElementStore } from '../../store/elementStore';
 import {
   type ColorGradeSettings,

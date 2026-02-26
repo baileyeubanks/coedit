@@ -94,7 +94,6 @@ class CoopAI {
   async *stream(request: AIRequest): AsyncGenerator<string> {
     // Streaming implementation — for real-time UI feedback
     const model = request.model || DEFAULT_MODEL;
-    const config = MODEL_CONFIG[model];
 
     if (this.proxyUrl) {
       // Stream through proxy

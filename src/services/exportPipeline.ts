@@ -13,7 +13,7 @@
  */
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { toBlobURL } from '@ffmpeg/util';
 import { useElementStore } from '../store/elementStore';
 import { usePlaybackStore } from '../store/playbackStore';
 import type { Element, SubtitleElement } from '../types';
@@ -86,114 +86,6 @@ async function getFFmpeg(onProgress?: ProgressCallback): Promise<FFmpeg> {
 
   ffmpegInstance = ffmpeg;
   return ffmpeg;
-}
-
-/**
- * Render a single frame to an offscreen canvas.
- * This replicates the CanvasViewport rendering logic but to a 2D canvas context.
- */
-function renderFrame(
-  ctx: CanvasRenderingContext2D,
-  elements: Element[],
-  currentTime: number,
-  width: number,
-  height: number,
-): void {
-  // Clear canvas
-  ctx.clearRect(0, 0, width, height);
-  // Black background
-  ctx.fillStyle = '#111827';
-  ctx.fillRect(0, 0, width, height);
-
-  for (const el of elements) {
-    if (!el.visible) continue;
-
-    const isInTime = currentTime >= el.startTime && currentTime < el.startTime + el.duration;
-    if (!isInTime) continue;
-
-    ctx.save();
-
-    // Position and transform
-    ctx.translate(el.x + el.width / 2, el.y + el.height / 2);
-    ctx.rotate((el.rotation * Math.PI) / 180);
-    ctx.globalAlpha = el.opacity;
-
-    if (el.blendMode !== 'normal') {
-      ctx.globalCompositeOperation = el.blendMode as GlobalCompositeOperation;
-    }
-
-    const x = -el.width / 2;
-    const y = -el.height / 2;
-
-    if (el.type === 'text') {
-      ctx.fillStyle = el.color;
-      ctx.font = `${el.fontWeight} ${el.fontSize}px ${el.fontFamily}`;
-      ctx.textAlign = el.textAlign as CanvasTextAlign;
-      ctx.textBaseline = 'middle';
-
-      const textX =
-        el.textAlign === 'center' ? 0 : el.textAlign === 'right' ? el.width / 2 : -el.width / 2;
-
-      // Word wrap
-      const words = el.content.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > el.width && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
-        }
-      }
-      if (currentLine) lines.push(currentLine);
-
-      const lineHeight = el.fontSize * 1.2;
-      const totalHeight = lines.length * lineHeight;
-      const startY = -totalHeight / 2 + lineHeight / 2;
-
-      lines.forEach((line, i) => {
-        ctx.fillText(line, textX, startY + i * lineHeight);
-      });
-    } else if (el.type === 'shape') {
-      ctx.fillStyle = el.fill;
-      if (el.borderRadius > 0) {
-        roundRect(ctx, x, y, el.width, el.height, el.borderRadius);
-        ctx.fill();
-      } else {
-        ctx.fillRect(x, y, el.width, el.height);
-      }
-      if (el.stroke !== 'none') {
-        ctx.strokeStyle = el.stroke;
-        ctx.lineWidth = el.strokeWidth;
-        ctx.strokeRect(x, y, el.width, el.height);
-      }
-    } else if (el.type === 'circle') {
-      ctx.fillStyle = el.fill;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, el.width / 2, el.height / 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (el.stroke !== 'none') {
-        ctx.strokeStyle = el.stroke;
-        ctx.lineWidth = el.strokeWidth;
-        ctx.stroke();
-      }
-    } else if (el.type === 'image' && el.src) {
-      // Images need to be pre-loaded — we'll handle this in the export orchestration
-      // For now, draw a placeholder
-      ctx.fillStyle = '#2a2a3a';
-      ctx.fillRect(x, y, el.width, el.height);
-    } else if (el.type === 'video' && el.src) {
-      // Video frames are captured from the hidden video element
-      // This is handled by the frame capture loop
-      ctx.fillStyle = '#1a1a2e';
-      ctx.fillRect(x, y, el.width, el.height);
-    }
-
-    ctx.restore();
-  }
 }
 
 function roundRect(
@@ -580,7 +472,11 @@ export async function exportProject(
 
   // Phase 6: Read output file
   const data = await ffmpeg.readFile(outputFile);
-  const blob = new Blob([data], { type: settings.format === 'mp4' ? 'video/mp4' : 'video/webm' });
+  // Handle SharedArrayBuffer from FFmpeg.wasm — copy to regular ArrayBuffer for Blob
+  const rawData = data instanceof Uint8Array
+    ? (data.buffer instanceof SharedArrayBuffer ? new Uint8Array(data).buffer : data.buffer)
+    : data;
+  const blob = new Blob([rawData], { type: settings.format === 'mp4' ? 'video/mp4' : 'video/webm' });
 
   // Cleanup FFmpeg virtual FS
   for (let i = 0; i < frameData.length; i++) {

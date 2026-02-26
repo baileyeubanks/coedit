@@ -9,7 +9,7 @@ import { NumberInput } from '../ui/NumberInput';
 import { ColorInput } from '../ui/ColorInput';
 import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
-import { useUIStore } from '../../store/uiStore';
+// uiStore available for panel state
 import { createSubtitleElement } from '../../utils/elementFactory';
 import { uid } from '../../utils/uid';
 import {

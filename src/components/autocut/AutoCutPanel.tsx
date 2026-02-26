@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { C } from '../../theme/colors';
 import { FONT_FAMILY, FONT_FAMILY_BRAND, FONT_FAMILY_MONO } from '../../theme/tokens';
 import { Icons } from '../../theme/icons';
@@ -6,7 +6,7 @@ import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { NumberInput } from '../ui/NumberInput';
 import { useElementStore } from '../../store/elementStore';
-import { usePlaybackStore } from '../../store/playbackStore';
+// playbackStore available for future seek-to-region
 import { uid } from '../../utils/uid';
 import {
   analyzeWaveform,
@@ -24,7 +24,6 @@ import { formatTime } from '../../utils/formatTime';
 export function AutoCutPanel() {
   const elements = useElementStore((s) => s.elements);
   const selectedIds = useElementStore((s) => s.selectedIds);
-  const updateElement = useElementStore((s) => s.updateElement);
   const deleteElements = useElementStore((s) => s.deleteElements);
   const addElement = useElementStore((s) => s.addElement);
 
@@ -320,7 +319,6 @@ export function AutoCutPanel() {
                         ctx.clearRect(0, 0, w, h);
 
                         // Draw waveform
-                        const step = Math.max(1, Math.floor(waveform.rms.length / w));
                         ctx.strokeStyle = C.accent2;
                         ctx.lineWidth = 1;
                         ctx.beginPath();
