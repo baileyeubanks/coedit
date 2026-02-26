@@ -46,4 +46,5 @@ export const Icons = {
   slipEdit: 'M3 6h18v12H3zM8 6v12M16 6v12',
   magnet: 'M4 14V8a8 8 0 1 1 16 0v6M4 14h16M6 14v4M18 14v4',
   hand: 'M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v10M10 9.5V6a2 2 0 0 0-4 0v8M22 14c0 5-3.5 8-8 8s-8-4-8-4l-2-5a2 2 0 0 1 3-2l1 2',
+  logOut: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
 } as const;

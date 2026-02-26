@@ -11,6 +11,7 @@ import { useUIStore, COMPOSITION_PRESETS } from '../../store/uiStore';
 import { createElement } from '../../utils/elementFactory';
 import { formatTime } from '../../utils/formatTime';
 import { saveProject, exportProjectJSON, importProjectJSON } from '../../services/projectService';
+import { supabase } from '../../lib/supabase';
 
 export function Toolbar() {
   const addElement = useElementStore((s) => s.addElement);
@@ -158,6 +159,12 @@ export function Toolbar() {
       <span style={{ fontSize: 10, color: C.textDim }}>
         {elements.length} layers &bull; {formatTime(currentTime)} / {formatTime(duration)}
       </span>
+
+      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
+
+      <Button small onClick={() => supabase.auth.signOut()} title="Sign out">
+        <Icon d={Icons.logOut} size={13} /> Sign Out
+      </Button>
     </div>
   );
 }

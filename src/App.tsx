@@ -13,6 +13,8 @@ import { AIAssistant } from './components/ai/AIAssistant';
 import { ExportDialog } from './components/export/ExportDialog';
 import { SubtitleEditor } from './components/subtitles/SubtitleEditor';
 import { AutoCutPanel } from './components/autocut/AutoCutPanel';
+import { LoginPage } from './components/auth/LoginPage';
+import { useAuth } from './hooks/useAuth';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
 import { loadProject, startAutosave, stopAutosave } from './services/projectService';
@@ -30,6 +32,7 @@ coopAI.configure({
 });
 
 export default function App() {
+  const { user, loading: authLoading } = useAuth();
   usePlayback();
   useKeyboard();
 
@@ -52,6 +55,25 @@ export default function App() {
     startAutosave();
     return () => stopAutosave();
   }, []);
+
+  // Auth loading spinner
+  if (authLoading) {
+    return (
+      <div style={{
+        width: '100%', height: '100vh', background: '#0c1322',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <div style={{ color: '#6b9fd4', fontSize: 14, fontFamily: "Inter, -apple-system, sans-serif" }}>
+          Loading...
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated — show login
+  if (!user) {
+    return <LoginPage />;
+  }
 
   return (
     <div
