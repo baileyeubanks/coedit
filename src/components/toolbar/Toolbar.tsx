@@ -91,6 +91,9 @@ export function Toolbar() {
       <Button small onClick={handleOpenProject} title="Open project file">
         <Icon d={Icons.upload} size={13} /> Open
       </Button>
+      <Button small onClick={() => useUIStore.getState().toggleProjectManager()} title="Cloud projects">
+        <Icon d={Icons.cloud} size={13} /> Cloud
+      </Button>
       <input
         ref={fileInputRef}
         type="file"

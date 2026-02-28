@@ -39,6 +39,7 @@ interface UIState {
   showSubtitleEditor: boolean;
   showAutoCut: boolean;
   showNewProjectDialog: boolean;
+  showProjectManager: boolean;
   contextMenu: ContextMenuState;
   zoom: number;
   canvasWidth: number;
@@ -55,6 +56,7 @@ interface UIActions {
   toggleSubtitleEditor: () => void;
   toggleAutoCut: () => void;
   setShowNewProjectDialog: (show: boolean) => void;
+  toggleProjectManager: () => void;
   openContextMenu: (x: number, y: number, targetId: string | null, targetType: ContextMenuState['targetType']) => void;
   closeContextMenu: () => void;
   setZoom: (z: number) => void;
@@ -73,6 +75,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   showSubtitleEditor: false,
   showAutoCut: false,
   showNewProjectDialog: false,
+  showProjectManager: false,
   contextMenu: { visible: false, x: 0, y: 0, targetId: null, targetType: null },
   zoom: 0.5,
   canvasWidth: 1920,
@@ -87,6 +90,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   toggleSubtitleEditor: () => set((s) => ({ showSubtitleEditor: !s.showSubtitleEditor })),
   toggleAutoCut: () => set((s) => ({ showAutoCut: !s.showAutoCut })),
   setShowNewProjectDialog: (show) => set({ showNewProjectDialog: show }),
+  toggleProjectManager: () => set((s) => ({ showProjectManager: !s.showProjectManager })),
 
   openContextMenu: (x, y, targetId, targetType) =>
     set({ contextMenu: { visible: true, x, y, targetId, targetType } }),

@@ -14,6 +14,7 @@ import { ExportDialog } from './components/export/ExportDialog';
 import { SubtitleEditor } from './components/subtitles/SubtitleEditor';
 import { AutoCutPanel } from './components/autocut/AutoCutPanel';
 import { LoginPage } from './components/auth/LoginPage';
+import { ProjectManager } from './components/projects/ProjectManager';
 import { useAuth } from './hooks/useAuth';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
@@ -39,6 +40,7 @@ export default function App() {
   const showMediaBin = useUIStore((s) => s.showMediaBin);
   const showSubtitleEditor = useUIStore((s) => s.showSubtitleEditor);
   const showAutoCut = useUIStore((s) => s.showAutoCut);
+  const showProjectManager = useUIStore((s) => s.showProjectManager);
 
   useEffect(() => {
     // Try to restore auto-saved project. If nothing saved, show blank canvas
@@ -141,6 +143,10 @@ export default function App() {
       <NewProjectDialog />
       <ExportDialog />
       <AIAssistant />
+      <ProjectManager
+        open={showProjectManager}
+        onClose={() => useUIStore.setState({ showProjectManager: false })}
+      />
     </div>
   );
 }
