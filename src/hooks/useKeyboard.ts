@@ -3,7 +3,7 @@ import { useElementStore } from '../store/elementStore';
 import { usePlaybackStore } from '../store/playbackStore';
 import { useTimelineStore } from '../store/timelineStore';
 import { useUIStore } from '../store/uiStore';
-// uid available if needed for future clipboard features
+import { saveProject, exportProjectJSON } from '../services/projectService';
 
 /**
  * Global keyboard shortcuts — modeled after Adobe Premiere Pro defaults.
@@ -159,10 +159,11 @@ export function useKeyboard() {
         return;
       }
 
-      // ------- Save (Ctrl+S) — prevent browser default -------
+      // ------- Save (Ctrl+S) — save project -------
       if (isMeta && key === 's') {
         e.preventDefault();
-        // TODO: project save
+        saveProject('My Project');
+        exportProjectJSON();
         return;
       }
 
