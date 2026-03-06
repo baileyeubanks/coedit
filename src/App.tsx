@@ -20,6 +20,7 @@ import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
 import { loadProject, startAutosave, stopAutosave } from './services/projectService';
 import { useUIStore } from './store/uiStore';
+import { CutView } from './components/cut/CutView';
 import { coopAI } from './services/aiEngine';
 
 // Configure AI engine from environment variables
@@ -37,6 +38,7 @@ export default function App() {
   usePlayback();
   useKeyboard();
 
+  const appMode = useUIStore((s) => s.appMode);
   const showMediaBin = useUIStore((s) => s.showMediaBin);
   const showSubtitleEditor = useUIStore((s) => s.showSubtitleEditor);
   const showAutoCut = useUIStore((s) => s.showAutoCut);
@@ -93,15 +95,24 @@ export default function App() {
     >
       <Toolbar />
 
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        <LayerPanel />
-        <CanvasViewport />
-        <PropertiesPanel />
-      </div>
+      {/* ── Cut mode: full-screen soundbite engine ── */}
+      {appMode === 'cut' ? (
+        <CutView />
+      ) : (
+        <>
+          <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+            <LayerPanel />
+            <CanvasViewport />
+            <PropertiesPanel />
+          </div>
 
-      <TimelinePanel />
-      {showMediaBin && <MediaBin />}
-      {showSubtitleEditor && (
+          <TimelinePanel />
+          {showMediaBin && <MediaBin />}
+        </>
+      )}
+
+      {/* These float over both modes */}
+      {appMode === 'edit' && showSubtitleEditor && (
         <div
           style={{
             position: 'fixed',
@@ -120,7 +131,7 @@ export default function App() {
           <SubtitleEditor />
         </div>
       )}
-      {showAutoCut && (
+      {appMode === 'edit' && showAutoCut && (
         <div
           style={{
             position: 'fixed',

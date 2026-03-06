@@ -5,6 +5,9 @@ export type PanelTab = 'properties' | 'animate' | 'filters';
 // NLE editing tools
 export type TimelineTool = 'select' | 'blade' | 'ripple' | 'roll' | 'slide' | 'slip';
 
+// Top-level app mode: edit = full NLE, cut = soundbite interview engine
+export type AppMode = 'edit' | 'cut';
+
 interface ContextMenuState {
   visible: boolean;
   x: number;
@@ -33,6 +36,7 @@ export const COMPOSITION_PRESETS: CompositionPreset[] = [
 ];
 
 interface UIState {
+  appMode: AppMode;
   activeTab: PanelTab;
   showGrid: boolean;
   showMediaBin: boolean;
@@ -50,6 +54,7 @@ interface UIState {
 }
 
 interface UIActions {
+  setAppMode: (mode: AppMode) => void;
   setActiveTab: (tab: PanelTab) => void;
   toggleGrid: () => void;
   toggleMediaBin: () => void;
@@ -69,6 +74,7 @@ interface UIActions {
 export type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>()((set) => ({
+  appMode: 'edit',
   activeTab: 'properties',
   showGrid: true,
   showMediaBin: true,
@@ -84,6 +90,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   exportDialogOpen: false,
   timelineTool: 'select',
 
+  setAppMode: (mode) => set({ appMode: mode }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleGrid: () => set((s) => ({ showGrid: !s.showGrid })),
   toggleMediaBin: () => set((s) => ({ showMediaBin: !s.showMediaBin })),

@@ -248,6 +248,92 @@ export async function transcribe(
 }
 
 /**
+ * Transcribe audio via OpenAI Whisper API with word-level timestamps.
+ * Requires VITE_OPENAI_API_KEY in env.
+ * Accepts any browser-readable URL (blob: or https:).
+ */
+export async function transcribeViaAPI(
+  src: string,
+  onProgress?: ProgressCallback,
+  signal?: AbortSignal,
+): Promise<TranscriptionResult> {
+  const apiKey = (import.meta as any).env?.VITE_OPENAI_API_KEY;
+  if (!apiKey) throw new Error('VITE_OPENAI_API_KEY is not set. Add it to your .env file.');
+
+  onProgress?.({ phase: 'extracting-audio', percent: 10, message: 'Fetching audio...' });
+
+  const fetchResp = await fetch(src, { signal });
+  if (!fetchResp.ok) throw new Error(`Failed to fetch audio: ${fetchResp.statusText}`);
+  const blob = await fetchResp.blob();
+
+  if (signal?.aborted) throw new Error('Transcription cancelled');
+
+  // Whisper API supports: mp3, mp4, mpeg, mpga, m4a, wav, webm
+  // Pick a safe extension based on mime type
+  const mimeToExt: Record<string, string> = {
+    'audio/mp3': 'mp3',
+    'audio/mpeg': 'mp3',
+    'audio/mp4': 'mp4',
+    'audio/m4a': 'm4a',
+    'audio/x-m4a': 'm4a',
+    'audio/wav': 'wav',
+    'audio/wave': 'wav',
+    'audio/webm': 'webm',
+    'audio/ogg': 'ogg',
+    'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/ogg': 'ogg',
+    'video/quicktime': 'mp4',
+  };
+  const ext = mimeToExt[blob.type] ?? 'mp3';
+
+  if (blob.size > 25 * 1024 * 1024) {
+    throw new Error(
+      `File is ${(blob.size / 1024 / 1024).toFixed(0)}MB — Whisper API limit is 25MB. Please trim the file first.`,
+    );
+  }
+
+  onProgress?.({ phase: 'transcribing', percent: 35, message: 'Uploading to Whisper API...' });
+
+  const formData = new FormData();
+  formData.append('file', blob, `audio.${ext}`);
+  formData.append('model', 'whisper-1');
+  formData.append('response_format', 'verbose_json');
+  formData.append('timestamp_granularities[]', 'word');
+
+  const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+    signal,
+  });
+
+  if (!whisperResp.ok) {
+    const errText = await whisperResp.text();
+    throw new Error(`Whisper API error ${whisperResp.status}: ${errText}`);
+  }
+
+  onProgress?.({ phase: 'transcribing', percent: 85, message: 'Processing transcript...' });
+
+  const data = await whisperResp.json();
+
+  const words: WhisperWord[] = (data.words ?? []).map((w: any) => ({
+    word: w.word,
+    start: w.start,
+    end: w.end,
+  }));
+
+  onProgress?.({ phase: 'done', percent: 100, message: 'Transcription complete' });
+
+  return {
+    text: data.text ?? '',
+    words,
+    language: data.language ?? 'en',
+    duration: data.duration ?? 0,
+  };
+}
+
+/**
  * Simple RMS-based speech segment detection
  */
 function detectSpeechSegments(

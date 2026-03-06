@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
-import { useUIStore, COMPOSITION_PRESETS } from '../../store/uiStore';
+import { useUIStore, COMPOSITION_PRESETS, type AppMode } from '../../store/uiStore';
 import { createElement } from '../../utils/elementFactory';
 import { formatTime } from '../../utils/formatTime';
 import { saveProject, exportProjectJSON, importProjectJSON } from '../../services/projectService';
@@ -26,6 +26,8 @@ export function Toolbar() {
   const toggleAutoCut = useUIStore((s) => s.toggleAutoCut);
   const showAutoCut = useUIStore((s) => s.showAutoCut);
   const setShowNewProjectDialog = useUIStore((s) => s.setShowNewProjectDialog);
+  const appMode = useUIStore((s) => s.appMode);
+  const setAppMode = useUIStore((s) => s.setAppMode);
   const canvasWidth = useUIStore((s) => s.canvasWidth);
   const canvasHeight = useUIStore((s) => s.canvasHeight);
   const setCanvasSize = useUIStore((s) => s.setCanvasSize);
@@ -73,11 +75,46 @@ export function Toolbar() {
           }}
         />
         <span style={{ fontFamily: FONT_FAMILY_BRAND, fontSize: 14, fontWeight: 700, letterSpacing: 0.5, color: C.text }}>
-          CoEdit
+          co-cut
         </span>
         <span style={{ fontSize: 8, color: C.textDim, marginLeft: 2, fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase' as const }}>
-          by Content Co-op
+          by content co-op
         </span>
+      </div>
+
+      {/* Mode toggle: Edit | Cut */}
+      <div
+        style={{
+          display: 'flex',
+          background: C.surface2,
+          border: `1px solid ${C.border}`,
+          borderRadius: 6,
+          padding: 2,
+          gap: 2,
+          marginRight: 4,
+        }}
+      >
+        {(['edit', 'cut'] as AppMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setAppMode(mode)}
+            style={{
+              padding: '3px 10px',
+              borderRadius: 4,
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: 11,
+              fontFamily: FONT_FAMILY_BRAND,
+              fontWeight: appMode === mode ? 700 : 400,
+              background: appMode === mode ? C.accent : 'transparent',
+              color: appMode === mode ? '#fff' : C.textDim,
+              transition: 'all 0.15s',
+              letterSpacing: 0.3,
+            }}
+          >
+            {mode}
+          </button>
+        ))}
       </div>
 
       <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
