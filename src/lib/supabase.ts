@@ -1,6 +1,30 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  isSupabaseConfigured,
+  missingSupabaseEnvVars,
+  runtimeConfig,
+  supabaseConfigError,
+} from '../config/runtime';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+let supabaseClient: SupabaseClient | null = null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (isSupabaseConfigured) {
+  supabaseClient = createClient(runtimeConfig.supabaseUrl, runtimeConfig.supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      persistSession: true,
+    },
+  });
+}
+
+export { isSupabaseConfigured, missingSupabaseEnvVars, supabaseConfigError };
+
+export function getSupabaseClient(): SupabaseClient {
+  if (!supabaseClient) {
+    throw new Error(supabaseConfigError ?? 'Supabase is not configured.');
+  }
+
+  return supabaseClient;
+}

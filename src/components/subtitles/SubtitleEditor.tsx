@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { C } from '../../theme/colors';
 import { FONT_FAMILY, FONT_FAMILY_BRAND, FONT_FAMILY_MONO } from '../../theme/tokens';
 import { Icons } from '../../theme/icons';
@@ -19,7 +19,9 @@ import {
   whisperToCues,
 } from '../../services/subtitleParser';
 import {
-  transcribe,
+  getTranscriptionConfigError,
+  isTranscriptionConfigured,
+  transcribeViaAPI,
   type TranscriptionProgress,
 } from '../../services/whisperService';
 import type { SubtitleElement, SubtitleCue, Element } from '../../types';
@@ -34,6 +36,7 @@ export function SubtitleEditor() {
   const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
 
   const [transcribeProgress, setTranscribeProgress] = useState<TranscriptionProgress | null>(null);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [editingCueId, setEditingCueId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -53,16 +56,29 @@ export function SubtitleEditor() {
     transcribeProgress !== null &&
     transcribeProgress.phase !== 'done' &&
     transcribeProgress.phase !== 'error';
+  const transcriptionConfigError = getTranscriptionConfigError();
+  const canTranscribe = isTranscriptionConfigured();
+  const transcribeButtonDisabled = !videoEl || !canTranscribe || isTranscribing;
+  const transcriptionNotice = transcribeError || (videoEl ? transcriptionConfigError : null);
+  const transcriptionNoticeColor = transcribeError ? C.red : C.orange;
 
   const handleTranscribe = async () => {
-    if (!videoEl) return;
+    if (!videoEl || !canTranscribe) return;
     const src = (videoEl as any).src;
     if (!src) return;
 
-    abortRef.current = new AbortController();
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setTranscribeError(null);
+    setTranscribeProgress({
+      phase: 'extracting-audio',
+      percent: 0,
+      message: 'Preparing source audio...',
+    });
 
     try {
-      const result = await transcribe(src, setTranscribeProgress, abortRef.current.signal);
+      const result = await transcribeViaAPI(src, setTranscribeProgress, controller.signal);
 
       if (result.words.length > 0) {
         const cues = whisperToCues(result.words);
@@ -74,17 +90,26 @@ export function SubtitleEditor() {
           });
           addElement(el);
         }
+      } else {
+        setTranscribeError('Timed transcription completed without word timings. Try a shorter or clearer clip.');
       }
     } catch (err: any) {
       if (err.message !== 'Transcription cancelled') {
+        setTranscribeError(err.message);
         setTranscribeProgress({
           phase: 'error',
           percent: 0,
           message: err.message,
         });
       }
+    } finally {
+      if (abortRef.current === controller) {
+        abortRef.current = null;
+      }
     }
   };
+
+  useEffect(() => () => abortRef.current?.abort(), []);
 
   const handleImportSRT = () => {
     fileInputRef.current?.click();
@@ -250,16 +275,20 @@ export function SubtitleEditor() {
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           <Button
             small
-            accent={!!videoEl}
+            accent={Boolean(videoEl && canTranscribe)}
             onClick={handleTranscribe}
+            disabled={transcribeButtonDisabled}
+            title={
+              !videoEl
+                ? 'Add a video clip to the composition before generating subtitles.'
+                : transcriptionConfigError || 'Generate timed subtitle cues from the current video clip.'
+            }
             style={{
               flex: 1,
-              opacity: videoEl ? 1 : 0.4,
-              cursor: videoEl ? 'pointer' : 'not-allowed',
             }}
           >
             <Icon d={Icons.wand} size={11} />
-            {isTranscribing ? 'Transcribing...' : 'Transcribe'}
+            {isTranscribing ? 'Transcribing...' : 'Timed Transcript'}
           </Button>
           <Button small onClick={handleImportSRT}>
             <Icon d={Icons.upload} size={11} /> Import
@@ -308,6 +337,23 @@ export function SubtitleEditor() {
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {!isTranscribing && transcriptionNotice && (
+          <div
+            style={{
+              marginBottom: 10,
+              padding: '8px 10px',
+              borderRadius: 6,
+              fontSize: 10,
+              lineHeight: 1.5,
+              color: transcriptionNoticeColor,
+              background: `${transcriptionNoticeColor}14`,
+              border: `1px solid ${transcriptionNoticeColor}33`,
+            }}
+          >
+            {transcriptionNotice}
           </div>
         )}
 
@@ -523,9 +569,11 @@ export function SubtitleEditor() {
           >
             <div style={{ marginBottom: 6 }}>No subtitles yet</div>
             <div style={{ fontSize: 9, color: C.textMuted }}>
-              Import SRT/VTT, add cues manually,
-              <br />
-              or transcribe from a video clip
+              {!videoEl
+                ? 'Import SRT/VTT, add cues manually, or add a video clip for timed transcription.'
+                : canTranscribe
+                  ? 'Generate a timed transcript from the current video clip, or import SRT/VTT.'
+                  : 'Add VITE_OPENAI_API_KEY to .env.local to generate timed subtitles from the current video clip.'}
             </div>
           </div>
         )}

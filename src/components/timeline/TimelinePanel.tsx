@@ -9,6 +9,7 @@ import { usePlaybackStore } from '../../store/playbackStore';
 import { useTimelineStore } from '../../store/timelineStore';
 import { useMediaStore } from '../../store/mediaStore';
 import { useUIStore, type TimelineTool } from '../../store/uiStore';
+import { getAssetDragId, hasAssetDragType } from '../../config/product';
 import { clamp } from '../../utils/math';
 import { formatTime } from '../../utils/formatTime';
 import { uid } from '../../utils/uid';
@@ -272,7 +273,7 @@ export function TimelinePanel() {
   const onTimelineDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const assetId = e.dataTransfer.getData('application/coedit-asset');
+      const assetId = getAssetDragId(e.dataTransfer);
       if (!assetId) return;
       const asset = useMediaStore.getState().getAsset(assetId);
       if (!asset) return;
@@ -379,25 +380,67 @@ export function TimelinePanel() {
   return (
     <div
       style={{
-        height: 240,
+        minHeight: 0,
         background: C.surface,
-        borderTop: `1px solid ${C.border}`,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
         fontFamily: FONT_FAMILY,
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Transport bar */}
+      <div
+        style={{
+          padding: '16px 18px 14px',
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 10, color: C.copper, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 5 }}>
+            Assembly Timeline
+          </div>
+          <div style={{ fontSize: 18, color: C.text, fontWeight: 700, marginBottom: 4 }}>
+            Arrange the final cut
+          </div>
+          <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.6 }}>
+            Place saved selects, visuals, and audio in sequence to build the deliverable.
+          </div>
+        </div>
+        <div
+          style={{
+            padding: '8px 10px',
+            borderRadius: 16,
+            border: `1px solid ${C.border}`,
+            background: C.surface2,
+            minWidth: 88,
+            textAlign: 'right',
+          }}
+        >
+          <div style={{ fontSize: 10, color: C.textDim, textTransform: 'uppercase', letterSpacing: 0.7 }}>
+            Active Tool
+          </div>
+          <div style={{ fontSize: 14, color: C.text, fontWeight: 700 }}>
+            {TOOL_CONFIG[timelineTool].label}
+          </div>
+        </div>
+      </div>
+
       <div
         style={{
           height: 38,
           display: 'flex',
           alignItems: 'center',
-          padding: '0 10px',
+          padding: '0 12px',
           gap: 4,
           borderBottom: `1px solid ${C.border}`,
-          background: C.surface,
+          background: C.surface2,
         }}
       >
         {/* Transport controls */}
@@ -483,7 +526,7 @@ export function TimelinePanel() {
 
       {/* Timeline tracks */}
       <div
-        style={{ flex: 1, display: 'flex', overflow: 'hidden' }}
+        style={{ flex: 1, minHeight: 0, display: 'flex', overflow: 'hidden' }}
         onMouseMove={onTimelineMouseMove}
         onMouseUp={onTimelineMouseUp}
         onMouseLeave={() => {
@@ -566,10 +609,11 @@ export function TimelinePanel() {
             overflowX: 'auto',
             overflowY: 'auto',
             cursor: getCursorForTool(),
+            background: C.surface3,
           }}
           onWheel={onWheel}
           onDragOver={(e) => {
-            if (e.dataTransfer.types.includes('application/coedit-asset')) {
+            if (hasAssetDragType(e.dataTransfer)) {
               e.preventDefault();
               e.dataTransfer.dropEffect = 'copy';
             }
@@ -580,6 +624,29 @@ export function TimelinePanel() {
           }}
         >
           <div style={{ minWidth: totalWidth, position: 'relative' }}>
+            {elements.length === 0 && (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 28,
+                  borderRadius: 18,
+                  border: `1px dashed ${C.border2}`,
+                  background: `${C.surface2}dd`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  padding: '20px 24px',
+                  color: C.textDim,
+                  fontSize: 12,
+                  lineHeight: 1.8,
+                  zIndex: 1,
+                  pointerEvents: 'none',
+                }}
+              >
+                Import media, then drag it into the timeline or the preview frame to start assembling the cut.
+              </div>
+            )}
             {/* Time ruler */}
             <div
               style={{

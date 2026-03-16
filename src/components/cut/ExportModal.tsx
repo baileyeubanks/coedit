@@ -16,7 +16,7 @@ export function ExportModal() {
   const exportData = {
     source: fileName ?? 'untitled',
     exportedAt: new Date().toISOString(),
-    soundbites: soundbites.map((sb, i) => ({
+    clips: soundbites.map((sb, i) => ({
       index: i + 1,
       label: sb.label,
       start: parseFloat(sb.start.toFixed(3)),
@@ -44,9 +44,9 @@ export function ExportModal() {
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    const baseName = fileName?.replace(/\.[^/.]+$/, '') ?? 'soundbites';
+    const baseName = fileName?.replace(/\.[^/.]+$/, '') ?? 'clips';
     a.href = url;
-    a.download = `${baseName}-soundbites.json`;
+    a.download = `${baseName}-clips.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -91,7 +91,7 @@ export function ExportModal() {
         >
           <Icon d={Icons.download} size={14} color={C.accent} />
           <span style={{ fontSize: 13, fontWeight: 700, color: C.text, flex: 1 }}>
-            export soundbites
+            export clips
           </span>
           <span style={{ fontSize: 10, color: C.textMuted }}>
             {soundbites.length} clip{soundbites.length !== 1 ? 's' : ''}

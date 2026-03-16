@@ -1,49 +1,66 @@
+/**
+ * Co-Cut Design Tokens — Content Co-op Brand Central
+ * ═══════════════════════════════════════════════════
+ * 70% Cream backgrounds · 20% Ink text · 10% Sapphire accent
+ * https://contentco-op.com/brandcentral
+ */
+
 export const C = {
-  // Backgrounds — near-black with subtle blue undertone
-  bg: '#060a10',
-  surface: '#0c1118',
-  surface2: '#131a24',
-  surface3: '#1a2332',
-  canvasBg: '#111827',
+  // ─── Backgrounds — warm cream family (70%) ────────────────────────────────
+  bg:         '#f0ebe0',            // Warm Cream — primary background
+  surface:    '#faf6ef',            // Parchment — card / panel surfaces
+  surface2:   '#f5f0e7',            // slightly warmer surface
+  surface3:   '#ede7da',            // elevated / hover surface
+  canvasBg:   '#0b1928',            // Canvas stays DARK — NLE convention
 
-  // Borders
-  border: '#1e2d3d',
-  border2: '#2a3f54',
+  // ─── Borders ──────────────────────────────────────────────────────────────
+  border:     '#d8cfc0',            // Sand — dividers, card borders
+  border2:    '#1e4d8c',            // Sapphire — active/focus borders
 
-  // Text
-  text: '#e2e8f0',
-  textDim: '#7b8fa3',
-  textMuted: '#546578',
+  // ─── Text — Ink family (20%) ──────────────────────────────────────────────
+  text:       '#0b1928',            // Deep Navy / Ink — primary text
+  textDim:    '#485670',            // Slate — secondary text
+  textMuted:  '#8a8478',            // Muted warm grey — tertiary
 
-  // Primary — deep rich blue
-  accent: '#2563eb',
-  accent2: '#60a5fa',
-  accentGlow: 'rgba(37,99,235,0.25)',
-  accentDark: '#1d4ed8',
+  // ─── Primary accent — Sapphire (10%) ──────────────────────────────────────
+  accent:     '#1e4d8c',            // Sapphire — CTAs, active states
+  accentBright:'#2a63b0',           // Sapphire hover
+  accent2:    '#b3c8f0',            // Periwinkle — selected highlights
+  accentGlow: 'rgba(30,77,140,0.12)',
+  accentDark: '#0b1928',            // Deep Navy — for dark contexts (canvas)
 
-  // Hover/interactive
-  surfaceHover: '#172033',
+  // ─── Copper — editorial accent ────────────────────────────────────────────
+  copper:     '#c4722a',            // Copper — eyebrows, callouts
 
-  // Semantic
-  green: '#22c55e',
-  orange: '#f59e0b',
-  red: '#ef4444',
-  pink: '#ec4899',
-  blue: '#3b82f6',
-  teal: '#14b8a6',
+  // ─── Hover/interactive ────────────────────────────────────────────────────
+  surfaceHover: '#ede7da',          // warm hover
 
-  // Status
-  success: '#22c55e',
-  warning: '#fbbf24',
-  error: '#dc2626',
+  // ─── Semantic (brand-harmonised) ──────────────────────────────────────────
+  green:   '#2d8a5e',
+  orange:  '#c4722a',               // Copper
+  red:     '#b8443e',
+  pink:    '#8a5a87',
+  blue:    '#1e4d8c',               // Sapphire
+  teal:    '#3a7d7e',
+
+  // ─── Status ───────────────────────────────────────────────────────────────
+  success: '#2d8a5e',
+  warning: '#c4722a',
+  error:   '#b8443e',
+
+  // ─── Dark mode panel (for canvas overlay, video preview) ──────────────────
+  darkBg:      '#0b1928',
+  darkSurface: '#0f1e30',
+  darkText:    '#edf3ff',
+  darkBorder:  '#1e3550',
 } as const;
 
 export const ELEMENT_COLORS: Record<string, string> = {
-  text: C.accent2,
-  shape: C.teal,
-  circle: C.teal,
-  image: C.orange,
-  video: C.pink,
-  audio: C.blue,
+  text:     C.accent,
+  shape:    C.teal,
+  circle:   C.teal,
+  image:    C.copper,
+  video:    C.pink,
+  audio:    C.blue,
   subtitle: C.warning,
 };

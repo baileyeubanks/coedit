@@ -1,0 +1,21 @@
+{
+  "name": "Co-Cut — Content Co-op",
+  "short_name": "Co-Cut",
+  "description": "Transcript-driven video editing in the browser. Shape the story from transcript to select.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b1928",
+  "theme_color": "#0b1928",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

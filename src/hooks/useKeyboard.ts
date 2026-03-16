@@ -3,7 +3,7 @@ import { useElementStore } from '../store/elementStore';
 import { usePlaybackStore } from '../store/playbackStore';
 import { useTimelineStore } from '../store/timelineStore';
 import { useUIStore } from '../store/uiStore';
-import { saveProject, exportProjectJSON } from '../services/projectService';
+import { saveProject } from '../services/projectService';
 
 /**
  * Global keyboard shortcuts — modeled after Adobe Premiere Pro defaults.
@@ -162,8 +162,7 @@ export function useKeyboard() {
       // ------- Save (Ctrl+S) — save project -------
       if (isMeta && key === 's') {
         e.preventDefault();
-        saveProject('My Project');
-        exportProjectJSON();
+        saveProject(undefined, { reason: 'manual', force: true }).catch(() => {});
         return;
       }
 

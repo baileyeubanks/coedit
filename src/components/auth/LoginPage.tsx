@@ -1,42 +1,107 @@
-import { useState, type FormEvent } from 'react';
-import { supabase } from '../../lib/supabase';
+import { useState, useEffect, type FormEvent } from 'react';
+import {
+  getSupabaseClient,
+  isSupabaseConfigured,
+  missingSupabaseEnvVars,
+  supabaseConfigError,
+} from '../../lib/supabase';
 
-const inputStyle = {
-  border: '1px solid #325276',
-  borderRadius: 10,
-  background: '#0d1a2e',
-  color: '#e9f0ff',
-  padding: '.65rem .75rem',
-  fontSize: '.88rem',
-  fontFamily: 'inherit',
-  outline: 'none',
-  transition: 'border-color 140ms ease',
-  width: '100%',
-  boxSizing: 'border-box' as const,
+// Inject Fraunces from Google Fonts once
+function useFrauncesFont() {
+  useEffect(() => {
+    if (document.getElementById('fraunces-font')) return;
+    const link = document.createElement('link');
+    link.id = 'fraunces-font';
+    link.rel = 'stylesheet';
+    link.href =
+      'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap';
+    document.head.appendChild(link);
+  }, []);
+}
+
+// ─── Brand tokens ────────────────────────────────────────────────────────────
+const B = {
+  cream:      '#f0ebe0',
+  parchment:  '#faf6ef',
+  sand:       '#d8cfc0',
+  navy:       '#0b1928',
+  navyMid:    '#0f2035',
+  sapphire:   '#1e4d8c',
+  sapphireDim:'#173d70',
+  slate:      '#485670',
+  periwinkle: '#b3c8f0',
+  copper:     '#c4722a',
+  text:       '#edf3ff',
+  textMuted:  '#7a9bc4',
+  border:     '#2b4263',
+  borderFocus:'#1e4d8c',
+  error:      '#de7676',
 };
 
-const labelStyle = {
+const SERIF = "'Fraunces', Georgia, serif";
+const SANS  = "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+// ─── Input styling ───────────────────────────────────────────────────────────
+const inputStyle: React.CSSProperties = {
+  border: `1px solid ${B.border}`,
+  borderRadius: 8,
+  background: 'rgba(255,255,255,0.04)',
+  color: B.text,
+  padding: '.6rem .75rem',
+  fontSize: '.875rem',
+  fontFamily: SANS,
+  outline: 'none',
+  transition: 'border-color 140ms ease, background 140ms ease',
+  width: '100%',
+  boxSizing: 'border-box',
+};
+
+const labelStyle: React.CSSProperties = {
   fontSize: '.68rem',
   letterSpacing: '.1em',
-  textTransform: 'uppercase' as const,
-  color: '#7a9bc4',
+  textTransform: 'uppercase',
+  color: B.periwinkle,
   fontWeight: 700,
+  fontFamily: SANS,
 };
 
+// ─── Env-not-configured error screen ─────────────────────────────────────────
+function MissingEnvScreen() {
+  return (
+    <main style={{ minHeight: '100vh', background: B.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: SANS }}>
+      <div style={{ maxWidth: 440, width: '100%' }}>
+        <div style={{ fontSize: '.72rem', letterSpacing: '.18em', textTransform: 'uppercase', color: B.periwinkle, fontWeight: 700, marginBottom: '1rem' }}>Co-Cut</div>
+        <h1 style={{ fontFamily: SERIF, fontSize: '1.6rem', color: B.text, fontWeight: 700, margin: '0 0 .5rem' }}>Environment setup required</h1>
+        <p style={{ color: B.textMuted, fontSize: '.84rem', lineHeight: 1.6, margin: '0 0 1.2rem' }}>{supabaseConfigError}</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.4rem' }}>
+          {missingSupabaseEnvVars.map((name) => (
+            <code key={name} style={{ color: B.periwinkle, background: 'rgba(179,200,240,0.08)', border: `1px solid ${B.border}`, borderRadius: 6, padding: '.25rem .55rem', fontSize: '.72rem' }}>
+              {name}
+            </code>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ─── Main login page ──────────────────────────────────────────────────────────
 export function LoginPage() {
-  const [error, setError] = useState('');
+  useFrauncesFont();
+
+  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'login' | 'signup'>('login');
-  const [success, setSuccess] = useState(false);
+
+  if (!isSupabaseConfigured) return <MissingEnvScreen />;
 
   async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError('');
     setLoading(true);
     const fd = new FormData(e.currentTarget);
-    const email = fd.get('email') as string;
+    const email    = fd.get('email') as string;
     const password = fd.get('password') as string;
-
+    const supabase = getSupabaseClient();
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
     if (err) {
       setError(err.message);
@@ -44,330 +109,262 @@ export function LoginPage() {
     }
   }
 
-  async function handleSignup(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    const fd = new FormData(e.currentTarget);
-    const email = fd.get('email') as string;
-    const password = fd.get('password') as string;
-    const confirm = fd.get('confirm_password') as string;
-    const displayName = fd.get('display_name') as string;
-
-    if (password !== confirm) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    const { error: err } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { display_name: displayName } },
-    });
-    if (err) {
-      setError(err.message);
-      setLoading(false);
-    } else {
-      setSuccess(true);
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogleLogin() {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    });
-  }
-
-  const focusHandler = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = '#6b9fd4';
+  const onFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderColor = B.borderFocus;
+    e.currentTarget.style.background  = 'rgba(255,255,255,0.07)';
   };
-  const blurHandler = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = '#325276';
+  const onBlur  = (e: React.FocusEvent<HTMLInputElement>) => {
+    e.currentTarget.style.borderColor = B.border;
+    e.currentTarget.style.background  = 'rgba(255,255,255,0.04)';
   };
 
   return (
-    <main
-      style={{
-        minHeight: '100vh',
-        background: '#0c1322',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '2rem 1rem',
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      }}
-    >
-      <div style={{ width: '100%', maxWidth: 440 }}>
-        <a
-          href="https://contentco-op.com"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '.4rem',
-            fontSize: '.72rem',
-            letterSpacing: '.1em',
-            textTransform: 'uppercase' as const,
-            fontWeight: 600,
-            color: '#5a7ea8',
-            textDecoration: 'none',
-            marginBottom: '1.2rem',
-          }}
-        >
-          &larr; contentco-op.com
-        </a>
+    <>
+      {/* Responsive breakpoint styles */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap');
 
-        <section
-          style={{
-            border: '1px solid #2b4263',
-            borderRadius: 18,
-            background: 'linear-gradient(160deg, #101b2e, #0d1828)',
-            padding: '2rem 1.6rem',
-          }}
-        >
-          <div
-            style={{
-              fontSize: '.72rem',
-              letterSpacing: '.18em',
-              textTransform: 'uppercase' as const,
-              color: '#6b9fd4',
-              fontWeight: 700,
-            }}
-          >
-            Co-Edit
-          </div>
-          <h1
-            style={{
-              margin: '.3rem 0 .4rem',
-              fontSize: '1.4rem',
-              color: '#edf3ff',
-              letterSpacing: '-.02em',
-              fontWeight: 700,
-            }}
-          >
-            {view === 'login' ? 'Sign in' : 'Create account'}
-          </h1>
-          <p
-            style={{
-              margin: '0 0 1.2rem',
-              color: '#7a9bc4',
-              fontSize: '.82rem',
-              lineHeight: 1.5,
-            }}
-          >
-            {view === 'login'
-              ? 'Browser-based video editor with AI-powered tools.'
-              : 'One account for Co-Edit, Co-Script, and Co-Deliver.'}
-          </p>
+        .cocut-login-root {
+          min-height: 100vh;
+          display: grid;
+          grid-template-columns: 1fr 420px;
+          font-family: ${SANS};
+        }
 
-          {/* Google OAuth */}
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '.5rem',
-              padding: '.65rem 1rem',
-              background: '#fff',
-              color: '#333',
-              border: '1px solid #d0d5dd',
-              borderRadius: 10,
-              fontSize: '.82rem',
-              fontWeight: 600,
-              fontFamily: 'inherit',
-              cursor: 'pointer',
-              transition: 'background 140ms ease',
-              marginBottom: '1rem',
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f5f5'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </button>
+        .cocut-login-brand {
+          background: ${B.cream};
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 2.5rem 3rem;
+          position: relative;
+          overflow: hidden;
+        }
 
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '.75rem',
-            marginBottom: '1rem', color: '#4a6888', fontSize: '.72rem',
-          }}>
-            <div style={{ flex: 1, height: 1, background: '#2b4263' }} />
-            <span>or</span>
-            <div style={{ flex: 1, height: 1, background: '#2b4263' }} />
-          </div>
+        .cocut-login-form-side {
+          background: ${B.navy};
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          padding: 2.5rem 2.5rem;
+          position: relative;
+        }
 
-          {success ? (
-            <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-              <div
-                style={{
-                  width: 48, height: 48, borderRadius: '50%',
-                  background: 'rgba(107, 159, 212, 0.12)',
-                  border: '1px solid rgba(107, 159, 212, 0.35)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  margin: '0 auto 1rem', fontSize: '1.2rem', color: '#6b9fd4',
-                }}
-              >
-                &#10003;
-              </div>
-              <h2 style={{ fontSize: '1.1rem', color: '#edf3ff', fontWeight: 700, margin: '0 0 .4rem' }}>
-                Account created
-              </h2>
-              <p style={{ color: '#7a9bc4', fontSize: '.82rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
-                You can now sign in with your email and password.
-              </p>
-              <button
-                type="button"
-                onClick={() => { setView('login'); setSuccess(false); setError(''); }}
-                style={{
-                  background: '#6b9fd4', color: '#0c1322',
-                  borderRadius: 999, padding: '.65rem 1.6rem',
-                  fontSize: '.74rem', fontWeight: 700,
-                  letterSpacing: '.1em', textTransform: 'uppercase' as const,
-                  border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                Sign in
-              </button>
+        .cocut-login-headline {
+          font-family: ${SERIF};
+          font-size: clamp(2rem, 3.5vw, 3rem);
+          font-weight: 700;
+          color: ${B.navy};
+          line-height: 1.12;
+          letter-spacing: -.02em;
+          margin: 0 0 1rem;
+        }
+
+        .cocut-login-headline em {
+          font-style: italic;
+          color: ${B.sapphire};
+        }
+
+        @media (max-width: 860px) {
+          .cocut-login-root {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
+          }
+          .cocut-login-brand {
+            padding: 2rem 1.75rem 1.5rem;
+            min-height: auto;
+          }
+          .cocut-login-brand-footer {
+            display: none !important;
+          }
+          .cocut-login-form-side {
+            padding: 2rem 1.75rem 2.5rem;
+            justify-content: flex-start;
+          }
+          .cocut-login-headline {
+            font-size: 1.75rem;
+            margin-bottom: .6rem;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .cocut-login-brand {
+            padding: 1.5rem 1.25rem 1rem;
+          }
+          .cocut-login-form-side {
+            padding: 1.75rem 1.25rem 2rem;
+          }
+        }
+      `}</style>
+
+      <main className="cocut-login-root">
+
+        {/* ── Left: Brand panel ── */}
+        <div className="cocut-login-brand">
+
+          {/* Top nav */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.5rem' }}>
+              {/* Wordmark */}
+              <span style={{ fontFamily: SANS, fontSize: '.78rem', fontWeight: 700, color: B.navy, letterSpacing: '.04em' }}>
+                Content Co-op
+              </span>
+              <span style={{ width: 1, height: 14, background: B.sand, display: 'inline-block', margin: '0 .35rem' }} />
+              <span style={{ fontFamily: SANS, fontSize: '.72rem', fontWeight: 600, color: B.slate, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+                Co-Cut
+              </span>
             </div>
-          ) : (
-            <>
-              {error && (
-                <div
-                  style={{
-                    color: '#de7676', fontSize: '.82rem', marginBottom: '.8rem',
-                    padding: '.5rem .75rem', borderRadius: 8,
-                    background: 'rgba(222, 118, 118, 0.08)',
-                    border: '1px solid rgba(222, 118, 118, 0.2)',
-                  }}
-                >
-                  {error}
-                </div>
-              )}
+            <a
+              href="https://contentco-op.com"
+              style={{ fontSize: '.72rem', color: B.slate, textDecoration: 'none', letterSpacing: '.04em', fontFamily: SANS }}
+            >
+              contentco-op.com ↗
+            </a>
+          </div>
 
-              {view === 'login' ? (
-                <form onSubmit={handleLogin} style={{ display: 'grid', gap: '.7rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Email</label>
-                    <input
-                      name="email" type="email" required
-                      placeholder="you@company.com" autoComplete="email"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Password</label>
-                    <input
-                      name="password" type="password" required
-                      placeholder="Password" autoComplete="current-password"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <button
-                    type="submit" disabled={loading}
-                    style={{
-                      marginTop: '.4rem', background: '#6b9fd4', color: '#0c1322',
-                      border: '1px solid #6b9fd4', borderRadius: 999,
-                      padding: '.65rem 1.6rem', fontSize: '.74rem', fontWeight: 700,
-                      letterSpacing: '.1em', textTransform: 'uppercase' as const,
-                      cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
-                      transition: 'opacity 140ms ease, transform 140ms ease',
-                      opacity: loading ? 0.6 : 1, width: '100%',
-                    }}
-                    onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = loading ? '0.6' : '1'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    {loading ? 'Signing in...' : 'Sign in'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleSignup} style={{ display: 'grid', gap: '.7rem' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Name</label>
-                    <input
-                      name="display_name" type="text"
-                      placeholder="Your name" autoComplete="name"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Email *</label>
-                    <input
-                      name="email" type="email" required
-                      placeholder="you@company.com" autoComplete="email"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Password *</label>
-                    <input
-                      name="password" type="password" required
-                      placeholder="At least 6 characters" autoComplete="new-password"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
-                    <label style={labelStyle}>Confirm password *</label>
-                    <input
-                      name="confirm_password" type="password" required
-                      placeholder="Confirm password" autoComplete="new-password"
-                      style={inputStyle} onFocus={focusHandler} onBlur={blurHandler}
-                    />
-                  </div>
-                  <button
-                    type="submit" disabled={loading}
-                    style={{
-                      marginTop: '.4rem', background: '#6b9fd4', color: '#0c1322',
-                      border: '1px solid #6b9fd4', borderRadius: 999,
-                      padding: '.65rem 1.6rem', fontSize: '.74rem', fontWeight: 700,
-                      letterSpacing: '.1em', textTransform: 'uppercase' as const,
-                      cursor: loading ? 'wait' : 'pointer', fontFamily: 'inherit',
-                      transition: 'opacity 140ms ease, transform 140ms ease',
-                      opacity: loading ? 0.6 : 1, width: '100%',
-                    }}
-                    onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.opacity = '0.88'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = loading ? '0.6' : '1'; e.currentTarget.style.transform = 'none'; }}
-                  >
-                    {loading ? 'Creating account...' : 'Create account'}
-                  </button>
-                </form>
-              )}
-            </>
-          )}
+          {/* Central message */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '2rem 0' }}>
+            {/* Eyebrow */}
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '.45rem',
+              marginBottom: '1.25rem',
+            }}>
+              <div style={{ width: 20, height: 2, background: B.copper, borderRadius: 2 }} />
+              <span style={{ fontFamily: SANS, fontSize: '.68rem', fontWeight: 700, color: B.copper, letterSpacing: '.16em', textTransform: 'uppercase' }}>
+                Editor
+              </span>
+            </div>
 
-          <p style={{ margin: '1.2rem 0 0', textAlign: 'center', fontSize: '.76rem', color: '#4a6888' }}>
-            {view === 'login' ? (
-              <>
-                Don&apos;t have an account?{' '}
-                <span
-                  onClick={() => { setView('signup'); setError(''); }}
-                  style={{ color: '#6b9fd4', textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Create one
+            <h1 className="cocut-login-headline">
+              Shape the story<br />
+              from transcript<br />
+              to <em>select.</em>
+            </h1>
+
+            <p style={{ fontFamily: SANS, fontSize: '.9rem', color: B.slate, lineHeight: 1.65, maxWidth: 380, margin: '0 0 2rem' }}>
+              Drop an interview. Review the timed transcript. Save the strongest quotes before you cut a single frame.
+            </p>
+
+            {/* Trust chips */}
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
+              {['Local-first · no upload required', 'Cloud sync on demand', 'FFmpeg in-browser export'].map((chip) => (
+                <span key={chip} style={{
+                  fontFamily: SANS,
+                  fontSize: '.7rem',
+                  fontWeight: 600,
+                  color: B.slate,
+                  background: 'transparent',
+                  border: `1px solid ${B.sand}`,
+                  borderRadius: 999,
+                  padding: '.3rem .75rem',
+                  letterSpacing: '.02em',
+                }}>
+                  {chip}
                 </span>
-              </>
-            ) : (
-              <>
-                Already have an account?{' '}
-                <span
-                  onClick={() => { setView('login'); setError(''); }}
-                  style={{ color: '#6b9fd4', textDecoration: 'none', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Sign in
-                </span>
-              </>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="cocut-login-brand-footer" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ height: 1, background: B.sand, flex: 1 }} />
+            <span style={{ fontFamily: SANS, fontSize: '.7rem', color: B.sand, whiteSpace: 'nowrap' }}>
+              © Content Co-op LLC
+            </span>
+          </div>
+        </div>
+
+        {/* ── Right: Form panel ── */}
+        <div className="cocut-login-form-side">
+          <div style={{ maxWidth: 340, width: '100%', margin: '0 auto' }}>
+
+            {/* Form header */}
+            <div style={{ marginBottom: '1.75rem' }}>
+              <div style={{ fontFamily: SANS, fontSize: '.68rem', letterSpacing: '.18em', textTransform: 'uppercase', color: B.periwinkle, fontWeight: 700, marginBottom: '.5rem' }}>
+                Sign in
+              </div>
+              <h2 style={{ fontFamily: SERIF, fontSize: '1.5rem', fontWeight: 700, color: B.text, margin: 0, letterSpacing: '-.02em' }}>
+                Open your editor.
+              </h2>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div style={{
+                color: B.error, fontSize: '.82rem', marginBottom: '.9rem',
+                padding: '.5rem .75rem', borderRadius: 8,
+                background: 'rgba(222, 118, 118, 0.08)',
+                border: '1px solid rgba(222, 118, 118, 0.2)',
+                fontFamily: SANS,
+              }}>
+                {error}
+              </div>
             )}
-          </p>
-        </section>
-      </div>
-    </main>
+
+            {/* Form */}
+            <form onSubmit={handleLogin} style={{ display: 'grid', gap: '.65rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                <label style={labelStyle}>Email</label>
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  style={inputStyle}
+                  onFocus={onFocus}
+                  onBlur={onBlur}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '.28rem' }}>
+                <label style={labelStyle}>Password</label>
+                <input
+                  name="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  style={inputStyle}
+                  onFocus={onFocus}
+                  onBlur={onBlur}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  marginTop: '.5rem',
+                  background: loading ? B.sapphireDim : B.sapphire,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '.7rem 1.6rem',
+                  fontSize: '.82rem',
+                  fontWeight: 700,
+                  fontFamily: SANS,
+                  letterSpacing: '.08em',
+                  textTransform: 'uppercase',
+                  cursor: loading ? 'wait' : 'pointer',
+                  transition: 'background 160ms ease, transform 120ms ease, opacity 140ms ease',
+                  opacity: loading ? 0.7 : 1,
+                  width: '100%',
+                }}
+                onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.background = '#255fac'; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = loading ? B.sapphireDim : B.sapphire; e.currentTarget.style.transform = 'none'; }}
+              >
+                {loading ? 'Signing in…' : 'Sign in'}
+              </button>
+            </form>
+
+            {/* Microcopy */}
+            <p style={{ marginTop: '1.25rem', fontFamily: SANS, fontSize: '.72rem', color: B.textMuted, lineHeight: 1.6, textAlign: 'center' }}>
+              Local drafts stay in this browser. Cloud sync optional.
+            </p>
+
+          </div>
+        </div>
+
+      </main>
+    </>
   );
 }

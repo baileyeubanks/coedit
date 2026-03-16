@@ -1,136 +1,363 @@
 import { useRef } from 'react';
 import { C } from '../../theme/colors';
 import { Icons } from '../../theme/icons';
-import { FONT_FAMILY, FONT_FAMILY_BRAND, TOOLBAR_HEIGHT } from '../../theme/tokens';
+import { FONT_FAMILY_BRAND, TOOLBAR_HEIGHT } from '../../theme/tokens';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
+import { useCutStore } from '../../store/cutStore';
 import { useElementStore } from '../../store/elementStore';
+import { usePersistenceStore } from '../../store/persistenceStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { useUIStore, COMPOSITION_PRESETS, type AppMode } from '../../store/uiStore';
-import { createElement } from '../../utils/elementFactory';
-import { formatTime } from '../../utils/formatTime';
 import { saveProject, exportProjectJSON, importProjectJSON } from '../../services/projectService';
-import { supabase } from '../../lib/supabase';
+import { getSupabaseClient, isSupabaseConfigured } from '../../lib/supabase';
+import { showToast } from '../ui/Toast';
+
+function ModeButton({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '5px 14px',
+        borderRadius: 999,
+        border: 'none',
+        background: active ? C.accent : 'transparent',
+        color: active ? '#ffffff' : C.textDim,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.4,
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function formatStatusTime(value: string | null): string | null {
+  if (!value) return null;
+  return new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+
+function getIssueBadgeLabel(localStatus: string, cloudStatus: string, hasErrorMessage: boolean): string | null {
+  if (localStatus === 'retrying') return 'Retrying save';
+  if (localStatus === 'error') return 'Save failed';
+  if (cloudStatus === 'conflict') return 'Sync conflict';
+  if (cloudStatus === 'error') return 'Sync failed';
+  if (hasErrorMessage) return 'Attention needed';
+  return null;
+}
 
 export function Toolbar() {
-  const addElement = useElementStore((s) => s.addElement);
   const elements = useElementStore((s) => s.elements);
-  const currentTime = usePlaybackStore((s) => s.currentTime);
-  const duration = usePlaybackStore((s) => s.duration);
-  const toggleGrid = useUIStore((s) => s.toggleGrid);
-  const showGrid = useUIStore((s) => s.showGrid);
-  const setExportDialogOpen = useUIStore((s) => s.setExportDialogOpen);
-  const toggleSubtitleEditor = useUIStore((s) => s.toggleSubtitleEditor);
-  const showSubtitleEditor = useUIStore((s) => s.showSubtitleEditor);
-  const toggleAutoCut = useUIStore((s) => s.toggleAutoCut);
-  const showAutoCut = useUIStore((s) => s.showAutoCut);
-  const setShowNewProjectDialog = useUIStore((s) => s.setShowNewProjectDialog);
   const appMode = useUIStore((s) => s.appMode);
   const setAppMode = useUIStore((s) => s.setAppMode);
+  const showMediaBin = useUIStore((s) => s.showMediaBin);
+  const toggleMediaBin = useUIStore((s) => s.toggleMediaBin);
+  const setShowNewProjectDialog = useUIStore((s) => s.setShowNewProjectDialog);
+  const setExportDialogOpen = useUIStore((s) => s.setExportDialogOpen);
   const canvasWidth = useUIStore((s) => s.canvasWidth);
   const canvasHeight = useUIStore((s) => s.canvasHeight);
   const setCanvasSize = useUIStore((s) => s.setCanvasSize);
 
+  const soundbites = useCutStore((s) => s.soundbites);
+  const setShowExportModal = useCutStore((s) => s.setShowExportModal);
+
+  const currentTime = usePlaybackStore((s) => s.currentTime);
+  const duration = usePlaybackStore((s) => s.duration);
+
+  const projectName = usePersistenceStore((s) => s.projectName);
+  const localStatus = usePersistenceStore((s) => s.localStatus);
+  const cloudStatus = usePersistenceStore((s) => s.cloudStatus);
+  const lastLocalSavedAt = usePersistenceStore((s) => s.lastLocalSavedAt);
+  const lastCloudSyncAt = usePersistenceStore((s) => s.lastCloudSyncAt);
+  const missingMediaCount = usePersistenceStore((s) => s.missingMediaCount);
+  const errorMessage = usePersistenceStore((s) => s.errorMessage);
+  const conflict = usePersistenceStore((s) => s.conflict);
+
   const { undo, redo } = useElementStore.temporal.getState();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = () => { saveProject('My Project'); exportProjectJSON(); };
-  const handleOpenProject = () => fileInputRef.current?.click();
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) await importProjectJSON(file);
-    e.target.value = '';
-  };
-
-  const handleAdd = (type: string) => {
-    const el = createElement(type, { startTime: currentTime });
-    addElement(el);
-  };
-
   const currentSizeKey = `${canvasWidth}x${canvasHeight}`;
+  const localStatusLabel =
+    localStatus === 'saving'
+      ? 'Saving locally'
+      : localStatus === 'retrying'
+        ? 'Retrying local save'
+        : localStatus === 'error'
+          ? 'Local save failed'
+          : localStatus === 'dirty'
+            ? 'Unsaved changes'
+            : formatStatusTime(lastLocalSavedAt)
+              ? `Saved ${formatStatusTime(lastLocalSavedAt)}`
+              : 'Draft ready';
+  const cloudStatusLabel =
+    cloudStatus === 'syncing'
+      ? 'Syncing'
+      : cloudStatus === 'conflict'
+        ? 'Needs review'
+        : cloudStatus === 'error'
+          ? 'Sync failed'
+          : cloudStatus === 'unsynced'
+            ? 'Sync needed'
+            : cloudStatus === 'synced' && formatStatusTime(lastCloudSyncAt)
+              ? `Synced ${formatStatusTime(lastCloudSyncAt)}`
+              : 'On this device';
+  const persistenceDetail =
+    localStatus === 'retrying'
+      ? errorMessage
+        ? `Local save retry queued. ${errorMessage}`
+        : 'Local save retry queued.'
+      : localStatus === 'error'
+        ? errorMessage
+          ? `Local save failed. ${errorMessage}`
+          : 'Local save failed.'
+        : cloudStatus === 'conflict'
+          ? conflict?.message || 'Project sync conflict. Open Projects to resolve it.'
+          : cloudStatus === 'error'
+            ? errorMessage
+              ? `Project sync failed. ${errorMessage}`
+              : 'Project sync failed.'
+            : errorMessage;
+  const persistenceDetailColor =
+    localStatus === 'error' || cloudStatus === 'error'
+      ? C.red
+      : localStatus === 'retrying' || cloudStatus === 'conflict' || Boolean(errorMessage)
+        ? C.orange
+        : C.textDim;
+  const issueBadgeLabel = getIssueBadgeLabel(localStatus, cloudStatus, Boolean(errorMessage));
+
+  const handleSave = () => {
+    saveProject(undefined, { reason: 'manual', force: true })
+      .then(() => showToast('Project saved locally.', 'success', 2500))
+      .catch(() => showToast('Save failed — try again.', 'error'));
+  };
+
+  const handleBackup = () => exportProjectJSON();
+  const handleOpenProject = () => fileInputRef.current?.click();
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) await importProjectJSON(file);
+    event.target.value = '';
+  };
+
+  const handleSignOut = () => {
+    if (!isSupabaseConfigured) return;
+    void getSupabaseClient().auth.signOut();
+  };
+
+  const modeLabels: Record<AppMode, string> = {
+    onboarding: 'New',
+    cut: 'Cut',
+    edit: 'Assemble',
+  };
 
   return (
-    <div
+    <header
       style={{
-        height: TOOLBAR_HEIGHT,
-        background: C.surface,
-        borderBottom: `1px solid ${C.border}`,
+        minHeight: TOOLBAR_HEIGHT,
         display: 'flex',
         alignItems: 'center',
-        padding: '0 12px',
-        gap: 6,
+        gap: 12,
+        rowGap: 8,
+        flexWrap: 'wrap',
+        padding: '8px 20px',
+        borderBottom: `1px solid ${C.border}`,
+        background: C.bg,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
         flexShrink: 0,
-        fontFamily: FONT_FAMILY,
+        overflowY: 'hidden',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
         <div
           style={{
-            width: 8,
-            height: 8,
-            borderRadius: 2,
+            width: 10,
+            height: 10,
+            borderRadius: 3,
             background: C.accent,
-            boxShadow: `0 0 10px ${C.accentGlow}`,
+            boxShadow: `0 0 12px ${C.accentGlow}`,
+            flexShrink: 0,
           }}
         />
-        <span style={{ fontFamily: FONT_FAMILY_BRAND, fontSize: 14, fontWeight: 700, letterSpacing: 0.5, color: C.text }}>
-          co-cut
-        </span>
-        <span style={{ fontSize: 8, color: C.textDim, marginLeft: 2, fontWeight: 500, letterSpacing: 1, textTransform: 'uppercase' as const }}>
-          by content co-op
-        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+            <span style={{ fontFamily: FONT_FAMILY_BRAND, fontSize: 18, fontWeight: 700, color: C.text }}>
+              Co-Cut
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                color: C.textDim,
+                textTransform: 'uppercase',
+                letterSpacing: 0.8,
+                fontWeight: 700,
+              }}
+            >
+              {modeLabels[appMode]}
+            </span>
+            {issueBadgeLabel && (
+              <span
+                title={persistenceDetail ?? undefined}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  border: `1px solid ${persistenceDetailColor}33`,
+                  background: `${persistenceDetailColor}14`,
+                  color: persistenceDetailColor,
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {issueBadgeLabel}
+              </span>
+            )}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 10,
+              color: C.textDim,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <span
+              style={{
+                maxWidth: 180,
+                overflow: 'hidden',
+                whiteSpace: 'nowrap',
+                textOverflow: 'ellipsis',
+                color: C.text,
+                fontWeight: 600,
+              }}
+            >
+              {projectName}
+            </span>
+            <span style={{ color: C.textMuted }}>•</span>
+            <span>{localStatusLabel}</span>
+            <span style={{ color: C.textMuted }}>•</span>
+            <span>{cloudStatusLabel}</span>
+            {missingMediaCount > 0 && (
+              <>
+                <span style={{ color: C.textMuted }}>•</span>
+                <span style={{ color: C.orange }}>{missingMediaCount} source missing</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Mode toggle: Edit | Cut */}
       <div
         style={{
           display: 'flex',
-          background: C.surface2,
+          alignItems: 'center',
+          gap: 4,
+          padding: 3,
+          borderRadius: 999,
           border: `1px solid ${C.border}`,
-          borderRadius: 6,
-          padding: 2,
-          gap: 2,
-          marginRight: 4,
+          background: C.surface2,
+          flexShrink: 0,
         }}
       >
-        {(['edit', 'cut'] as AppMode[]).map((mode) => (
-          <button
-            key={mode}
-            onClick={() => setAppMode(mode)}
-            style={{
-              padding: '3px 10px',
-              borderRadius: 4,
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 11,
-              fontFamily: FONT_FAMILY_BRAND,
-              fontWeight: appMode === mode ? 700 : 400,
-              background: appMode === mode ? C.accent : 'transparent',
-              color: appMode === mode ? '#fff' : C.textDim,
-              transition: 'all 0.15s',
-              letterSpacing: 0.3,
-            }}
-          >
-            {mode}
-          </button>
-        ))}
+        <ModeButton active={appMode === 'cut'} label="Cut" onClick={() => setAppMode('cut')} />
+        <ModeButton active={appMode === 'edit'} label="Assemble" onClick={() => setAppMode('edit')} />
       </div>
 
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
+      {appMode === 'edit' && (
+        <>
+          <Select
+            value={currentSizeKey}
+            onChange={(value) => {
+              const [width, height] = value.split('x').map(Number);
+              setCanvasSize(width, height);
+            }}
+            options={COMPOSITION_PRESETS.map((preset) => ({
+              label: `${preset.label} — ${preset.platform}`,
+              value: `${preset.width}x${preset.height}`,
+            }))}
+            style={{ fontSize: 10, minWidth: 180, flexShrink: 0 }}
+          />
+          <Button small active={showMediaBin} onClick={toggleMediaBin}>
+            <Icon d={Icons.folder} size={12} /> Media
+          </Button>
+          <Button small onClick={() => undo()} title="Undo">
+            <Icon d={Icons.undo} size={12} />
+          </Button>
+          <Button small onClick={() => redo()} title="Redo">
+            <Icon d={Icons.redo} size={12} />
+          </Button>
+        </>
+      )}
 
-      <Button small onClick={() => setShowNewProjectDialog(true)} title="New project">
-        <Icon d={Icons.zap} size={13} /> New
-      </Button>
-      <Button small onClick={handleSave} title="Save project (Ctrl+S)">
-        <Icon d={Icons.download} size={13} /> Save
-      </Button>
-      <Button small onClick={handleOpenProject} title="Open project file">
-        <Icon d={Icons.upload} size={13} /> Open
-      </Button>
-      <Button small onClick={() => useUIStore.getState().toggleProjectManager()} title="Cloud projects">
-        <Icon d={Icons.cloud} size={13} /> Cloud
-      </Button>
+      <div style={{ flex: 1 }} />
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10, color: C.textDim, flexShrink: 0 }}>
+        {appMode === 'edit' ? (
+          <span>{elements.length} layer{elements.length === 1 ? '' : 's'} • {Math.round(duration)}s timeline</span>
+        ) : (
+          <span>{soundbites.length} clip{soundbites.length === 1 ? '' : 's'} saved</span>
+        )}
+        {appMode === 'edit' && (
+          <span>{Math.round(currentTime)}s</span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+        <Button small onClick={() => setShowNewProjectDialog(true)}>
+          <Icon d={Icons.zap} size={12} /> New
+        </Button>
+        <Button small accent onClick={handleSave} title="Save the current draft locally in this browser">
+          <Icon d={Icons.save} size={12} /> Save
+        </Button>
+        <Button small onClick={handleBackup} title="Download a project backup. Source media is not included.">
+          <Icon d={Icons.download} size={12} /> Backup
+        </Button>
+        <Button small onClick={handleOpenProject} title="Restore a project backup file">
+          <Icon d={Icons.upload} size={12} /> Restore
+        </Button>
+        <Button small onClick={() => useUIStore.getState().toggleProjectManager()}>
+          <Icon d={Icons.cloud} size={12} /> Projects
+        </Button>
+        {appMode === 'cut' ? (
+          <Button small onClick={() => setShowExportModal(true)} disabled={soundbites.length === 0}>
+            <Icon d={Icons.download} size={12} /> Export Clips
+          </Button>
+        ) : (
+          <Button small onClick={() => setExportDialogOpen(true)}>
+            <Icon d={Icons.download} size={12} /> Export
+          </Button>
+        )}
+        {isSupabaseConfigured && (
+          <Button small onClick={handleSignOut} title="Sign out">
+            <Icon d={Icons.logOut} size={12} />
+          </Button>
+        )}
+        <Button
+          small
+          onClick={() => useUIStore.getState().setShowNASBackup(true)}
+          title="Back up 04_FINALS to NAS"
+        >
+          <Icon d={Icons.cloud} size={12} /> NAS
+        </Button>
+      </div>
+
       <input
         ref={fileInputRef}
         type="file"
@@ -138,73 +365,6 @@ export function Toolbar() {
         style={{ display: 'none' }}
         onChange={handleFileChange}
       />
-
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
-
-      {/* Canvas size / aspect ratio */}
-      <Select
-        value={currentSizeKey}
-        onChange={(v) => {
-          const [w, h] = v.split('x').map(Number);
-          setCanvasSize(w, h);
-        }}
-        options={COMPOSITION_PRESETS.map((p) => ({
-          label: `${p.label} — ${p.platform}`,
-          value: `${p.width}x${p.height}`,
-        }))}
-        style={{ fontSize: 10, minWidth: 160 }}
-      />
-
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
-
-      <Button small onClick={() => handleAdd('text')}>
-        <Icon d={Icons.text} size={13} /> Text
-      </Button>
-      <Button small onClick={() => handleAdd('shape')}>
-        <Icon d={Icons.square} size={13} /> Rect
-      </Button>
-      <Button small onClick={() => handleAdd('circle')}>
-        <Icon d={Icons.circle} size={13} /> Circle
-      </Button>
-      <Button small onClick={() => handleAdd('image')}>
-        <Icon d={Icons.image} size={13} /> Image
-      </Button>
-
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
-
-      <Button small onClick={() => undo()}>
-        <Icon d={Icons.undo} size={13} />
-      </Button>
-      <Button small onClick={() => redo()}>
-        <Icon d={Icons.redo} size={13} />
-      </Button>
-      <Button small active={showGrid} onClick={toggleGrid}>
-        <Icon d={Icons.grid} size={13} />
-      </Button>
-
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
-
-      <Button small active={showSubtitleEditor} onClick={toggleSubtitleEditor}>
-        <Icon d={Icons.text} size={13} /> Subs
-      </Button>
-      <Button small active={showAutoCut} onClick={toggleAutoCut}>
-        <Icon d={Icons.wand} size={13} /> Auto-Cut
-      </Button>
-      <Button small onClick={() => setExportDialogOpen(true)}>
-        <Icon d={Icons.download} size={13} /> Export
-      </Button>
-
-      <div style={{ flex: 1 }} />
-
-      <span style={{ fontSize: 10, color: C.textDim }}>
-        {elements.length} layers &bull; {formatTime(currentTime)} / {formatTime(duration)}
-      </span>
-
-      <div style={{ width: 1, height: 24, background: C.border, margin: '0 6px' }} />
-
-      <Button small onClick={() => supabase.auth.signOut()} title="Sign out">
-        <Icon d={Icons.logOut} size={13} /> Sign Out
-      </Button>
-    </div>
+    </header>
   );
 }

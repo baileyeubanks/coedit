@@ -6,7 +6,7 @@ export type PanelTab = 'properties' | 'animate' | 'filters';
 export type TimelineTool = 'select' | 'blade' | 'ripple' | 'roll' | 'slide' | 'slip';
 
 // Top-level app mode: edit = full NLE, cut = soundbite interview engine
-export type AppMode = 'edit' | 'cut';
+export type AppMode = 'edit' | 'cut' | 'onboarding';
 
 interface ContextMenuState {
   visible: boolean;
@@ -44,6 +44,7 @@ interface UIState {
   showAutoCut: boolean;
   showNewProjectDialog: boolean;
   showProjectManager: boolean;
+  showNASBackup: boolean;
   contextMenu: ContextMenuState;
   zoom: number;
   canvasWidth: number;
@@ -62,6 +63,7 @@ interface UIActions {
   toggleAutoCut: () => void;
   setShowNewProjectDialog: (show: boolean) => void;
   toggleProjectManager: () => void;
+  setShowNASBackup: (show: boolean) => void;
   openContextMenu: (x: number, y: number, targetId: string | null, targetType: ContextMenuState['targetType']) => void;
   closeContextMenu: () => void;
   setZoom: (z: number) => void;
@@ -74,7 +76,7 @@ interface UIActions {
 export type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>()((set) => ({
-  appMode: 'edit',
+  appMode: 'onboarding',
   activeTab: 'properties',
   showGrid: true,
   showMediaBin: true,
@@ -82,6 +84,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   showAutoCut: false,
   showNewProjectDialog: false,
   showProjectManager: false,
+  showNASBackup: false,
   contextMenu: { visible: false, x: 0, y: 0, targetId: null, targetType: null },
   zoom: 0.5,
   canvasWidth: 1920,
@@ -98,6 +101,7 @@ export const useUIStore = create<UIStore>()((set) => ({
   toggleAutoCut: () => set((s) => ({ showAutoCut: !s.showAutoCut })),
   setShowNewProjectDialog: (show) => set({ showNewProjectDialog: show }),
   toggleProjectManager: () => set((s) => ({ showProjectManager: !s.showProjectManager })),
+  setShowNASBackup: (show) => set({ showNASBackup: show }),
 
   openContextMenu: (x, y, targetId, targetType) =>
     set({ contextMenu: { visible: true, x, y, targetId, targetType } }),

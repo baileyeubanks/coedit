@@ -7,6 +7,7 @@ import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { useUIStore } from '../../store/uiStore';
 import { usePlaybackStore } from '../../store/playbackStore';
+import { showToast } from '../ui/Toast';
 import {
   exportProject,
   downloadBlob,
@@ -92,7 +93,15 @@ export function ExportDialog() {
     try {
       const blob = await exportProject(settings, setProgress, abortRef.current.signal);
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      downloadBlob(blob, `coedit-export-${timestamp}.${settings.format}`);
+      downloadBlob(blob, `co-cut-export-${timestamp}.${settings.format}`);
+      showToast('Export complete! File downloaded.', 'success');
+      // Trigger NAS backup dialog on first finals export (check localStorage flag)
+      const nasSkip = localStorage.getItem('cocut_nas_skip');
+      if (!nasSkip) {
+        setTimeout(() => {
+          useUIStore.getState().setShowNASBackup(true);
+        }, 800);
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Export failed';
       if (message === 'Export cancelled') {

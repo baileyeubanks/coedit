@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import { C } from '../../theme/colors';
 import { FONT_FAMILY, FONT_FAMILY_BRAND } from '../../theme/tokens';
 import { Icons } from '../../theme/icons';
@@ -13,7 +13,7 @@ interface ChatMessage {
   timestamp: number;
 }
 
-export function AIAssistant() {
+export function AIAssistant({ embedded = false }: { embedded?: boolean }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -28,7 +28,6 @@ export function AIAssistant() {
     setLoading(true);
 
     try {
-      // Build context from current scene
       const elements = useElementStore.getState().elements;
       const sceneContext = elements
         .map((el) => `- ${el.type}: "${el.name}" at (${el.x},${el.y}), ${el.width}x${el.height}`)
@@ -37,7 +36,7 @@ export function AIAssistant() {
       const aiMessages: AIMessage[] = [
         {
           role: 'system',
-          content: `You are Co-op AI, a video production assistant built into CoEdit by Content Co-op. You help with:
+          content: `You are Co-Cut AI, a video production assistant built into Co-Cut by Content Co-op. You help with:
 - Scene layout and composition suggestions
 - Color grading recommendations
 - Edit pacing and timing advice
@@ -70,25 +69,32 @@ Be concise, professional, and creative. Never mention your underlying technology
         ...prev,
         {
           role: 'assistant',
-          content: `Co-op AI is not configured yet. Add your API key in Settings to enable AI features.\n\nError: ${err.message}`,
+          content: `Co-Cut AI is not configured yet. Add your API key in Settings to enable AI features.\n\nError: ${err.message}`,
           timestamp: Date.now(),
         },
       ]);
     } finally {
       setLoading(false);
-      setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }), 50);
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+      }, 50);
     }
   };
+
+  const shellPositionStyle = embedded
+    ? {}
+    : {
+        position: 'fixed' as const,
+        right: 16,
+        bottom: 16,
+        zIndex: 300,
+      };
 
   if (!open) {
     return (
       <div
         onClick={() => setOpen(true)}
         style={{
-          position: 'fixed',
-          bottom: 16,
-          left: '50%',
-          transform: 'translateX(-50%)',
           background: `linear-gradient(135deg, ${C.accent}, ${C.accentDark})`,
           color: '#fff',
           padding: '8px 16px',
@@ -101,19 +107,19 @@ Be concise, professional, and creative. Never mention your underlying technology
           alignItems: 'center',
           gap: 6,
           boxShadow: `0 4px 20px ${C.accentGlow}`,
-          zIndex: 500,
           letterSpacing: 0.3,
           transition: 'transform 0.15s, box-shadow 0.15s',
+          ...shellPositionStyle,
         }}
         onMouseEnter={(e) => {
-          (e.currentTarget as HTMLDivElement).style.transform = 'translateX(-50%) scale(1.05)';
+          (e.currentTarget as HTMLDivElement).style.transform = 'scale(1.05)';
         }}
         onMouseLeave={(e) => {
-          (e.currentTarget as HTMLDivElement).style.transform = 'translateX(-50%) scale(1)';
+          (e.currentTarget as HTMLDivElement).style.transform = 'scale(1)';
         }}
       >
         <Icon d={Icons.zap} size={12} color="#fff" />
-        Co-op AI
+        Co-Cut AI
       </div>
     );
   }
@@ -121,23 +127,19 @@ Be concise, professional, and creative. Never mention your underlying technology
   return (
     <div
       style={{
-        position: 'fixed',
-        bottom: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 380,
+        width: embedded ? 'min(380px, calc(100vw - 32px))' : 380,
+        maxWidth: 'calc(100vw - 32px)',
         maxHeight: 440,
         background: C.surface,
         border: `1px solid ${C.border}`,
         borderRadius: 12,
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: `0 12px 48px rgba(0,0,0,0.6)`,
-        zIndex: 500,
+        boxShadow: '0 12px 48px rgba(0,0,0,0.6)',
         fontFamily: FONT_FAMILY,
+        ...shellPositionStyle,
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -149,7 +151,7 @@ Be concise, professional, and creative. Never mention your underlying technology
       >
         <Icon d={Icons.zap} size={14} color={C.accent} />
         <span style={{ fontFamily: FONT_FAMILY_BRAND, fontSize: 13, fontWeight: 600, flex: 1 }}>
-          Co-op AI
+          Co-Cut AI
         </span>
         <span
           style={{ fontSize: 14, color: C.textDim, cursor: 'pointer', lineHeight: 1 }}
@@ -159,7 +161,6 @@ Be concise, professional, and creative. Never mention your underlying technology
         </span>
       </div>
 
-      {/* Messages */}
       <div
         ref={scrollRef}
         style={{
@@ -175,7 +176,7 @@ Be concise, professional, and creative. Never mention your underlying technology
       >
         {messages.length === 0 && (
           <div style={{ color: C.textDim, fontSize: 11, textAlign: 'center', padding: '20px 0' }}>
-            Ask Co-op AI for help with your edit — layout suggestions, color grading, pacing advice, and more.
+            Ask Co-Cut AI for help with your edit: layout suggestions, pacing advice, captions, and export guidance.
           </div>
         )}
         {messages.map((msg, i) => (
@@ -212,7 +213,6 @@ Be concise, professional, and creative. Never mention your underlying technology
         )}
       </div>
 
-      {/* Input */}
       <div
         style={{
           display: 'flex',
@@ -230,7 +230,7 @@ Be concise, professional, and creative. Never mention your underlying technology
               sendMessage();
             }
           }}
-          placeholder="Ask Co-op AI..."
+          placeholder="Ask Co-Cut AI..."
           style={{
             flex: 1,
             background: C.surface2,

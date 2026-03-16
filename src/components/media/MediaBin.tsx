@@ -1,7 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { C, ELEMENT_COLORS } from '../../theme/colors';
 import { Icons } from '../../theme/icons';
-import { MEDIA_BIN_HEIGHT } from '../../theme/tokens';
 import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { useMediaStore } from '../../store/mediaStore';
@@ -9,81 +8,11 @@ import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { useTimelineStore } from '../../store/timelineStore';
 import { uid } from '../../utils/uid';
+import { setAssetDragData } from '../../config/product';
 import { createVideoElement, createImageElement, createAudioElement } from '../../utils/elementFactory';
 import { formatTimeShort } from '../../utils/formatTime';
 import type { MediaAsset } from '../../types';
-
-async function getMediaMetadata(file: File): Promise<Partial<MediaAsset>> {
-  return new Promise((resolve) => {
-    if (file.type.startsWith('video/')) {
-      const video = document.createElement('video');
-      video.preload = 'metadata';
-      video.onloadedmetadata = () => {
-        // Generate thumbnail
-        video.currentTime = video.duration * 0.25;
-        video.onseeked = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = 120;
-          canvas.height = 68;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(video, 0, 0, 120, 68);
-          const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
-          URL.revokeObjectURL(video.src);
-          resolve({
-            type: 'video',
-            duration: video.duration,
-            width: video.videoWidth,
-            height: video.videoHeight,
-            thumbnailUrl,
-          });
-        };
-      };
-      video.onerror = () => {
-        URL.revokeObjectURL(video.src);
-        resolve({ type: 'video' });
-      };
-      video.src = URL.createObjectURL(file);
-    } else if (file.type.startsWith('image/')) {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = 120;
-        canvas.height = 68;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, 120, 68);
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
-        URL.revokeObjectURL(img.src);
-        resolve({
-          type: 'image',
-          width: img.naturalWidth,
-          height: img.naturalHeight,
-          thumbnailUrl,
-        });
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(img.src);
-        resolve({ type: 'image' });
-      };
-      img.src = URL.createObjectURL(file);
-    } else if (file.type.startsWith('audio/')) {
-      const audioCtx = new AudioContext();
-      file.arrayBuffer().then((buf) => {
-        audioCtx.decodeAudioData(buf).then((audioBuf) => {
-          audioCtx.close();
-          resolve({
-            type: 'audio',
-            duration: audioBuf.duration,
-          });
-        }).catch(() => {
-          audioCtx.close();
-          resolve({ type: 'audio' });
-        });
-      });
-    } else {
-      resolve({});
-    }
-  });
-}
+import { inferLocalMediaKind, readLocalMediaMetadata } from '../../utils/localMedia';
 
 export function MediaBin() {
   const assets = useMediaStore((s) => s.assets);
@@ -95,18 +24,34 @@ export function MediaBin() {
   const duration = usePlaybackStore((s) => s.duration);
   const setDuration = usePlaybackStore((s) => s.setDuration);
   const addTrack = useTimelineStore((s) => s.addTrack);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFiles = useCallback(
     async (files: FileList) => {
+      const fileList = Array.from(files);
+      if (fileList.length === 0) return;
+
+      setErrorMessage(null);
+      setStatusMessage(`Attaching ${fileList.length} local assembly asset${fileList.length === 1 ? '' : 's'} to this project…`);
       setLoading(true);
-      for (const file of Array.from(files)) {
-        const meta = await getMediaMetadata(file);
+      let importedCount = 0;
+
+      for (const [index, file] of fileList.entries()) {
+        const kind = inferLocalMediaKind(file);
+        if (!kind) {
+          setErrorMessage(`"${file.name}" is not a supported image, video, or audio asset.`);
+          continue;
+        }
+
+        setStatusMessage(`Ingesting ${index + 1} of ${fileList.length}: ${file.name}`);
+        const meta = await readLocalMediaMetadata(file, kind);
         const blobUrl = URL.createObjectURL(file);
         const assetId = uid();
         const asset: MediaAsset = {
           id: assetId,
           name: file.name,
-          type: meta.type || 'video',
+          type: meta.type,
           mimeType: file.type,
           size: file.size,
           duration: meta.duration,
@@ -114,10 +59,18 @@ export function MediaBin() {
           height: meta.height,
           thumbnailUrl: meta.thumbnailUrl,
           blobKey: blobUrl,
+          fileBlob: file,
+          sourceMissing: false,
         };
         addAsset(asset);
+        importedCount += 1;
       }
       setLoading(false);
+      setStatusMessage(
+        importedCount > 0
+          ? `${importedCount} local assembly asset${importedCount === 1 ? '' : 's'} attached to this project draft.`
+          : null,
+      );
     },
     [addAsset, setLoading],
   );
@@ -144,6 +97,8 @@ export function MediaBin() {
   };
 
   const addToTimeline = (asset: MediaAsset) => {
+    if (asset.sourceMissing || !asset.blobKey) return;
+
     if (asset.type === 'video') {
       const trackId = addTrack('video');
       const mediaDuration = asset.duration || 10;
@@ -191,43 +146,68 @@ export function MediaBin() {
   };
 
   return (
-    <div
+    <aside
       style={{
-        height: MEDIA_BIN_HEIGHT,
+        minHeight: 0,
         background: C.surface,
-        borderTop: `1px solid ${C.border}`,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          padding: '6px 10px',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          padding: '16px 18px 14px',
           borderBottom: `1px solid ${C.border}`,
-          gap: 8,
+          gap: 12,
         }}
       >
-        <Icon d={Icons.folder} size={13} color={C.textDim} />
-        <span style={{ fontSize: 9, color: C.textDim, textTransform: 'uppercase', letterSpacing: 1.5 }}>
-          Media Bin
-        </span>
-        <div style={{ flex: 1 }} />
+        <div>
+          <div style={{ fontSize: 10, color: C.copper, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 5 }}>
+            Assembly
+          </div>
+          <div style={{ fontSize: 16, color: C.text, fontWeight: 700, marginBottom: 4 }}>
+            Media for Assembly
+          </div>
+          <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+            Bring in B-roll, stills, music, and other assembly assets here. Interview source ingest belongs in Cut.
+          </div>
+        </div>
         <Button small onClick={handleImport}>
-          <Icon d={Icons.upload} size={12} /> Import
+          <Icon d={Icons.upload} size={12} /> Import Media
         </Button>
       </div>
+
+      {(statusMessage || errorMessage) && (
+        <div
+          style={{
+            padding: '10px 12px',
+            borderBottom: `1px solid ${C.border}`,
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: errorMessage ? C.orange : C.textDim,
+            background: errorMessage ? `${C.orange}10` : C.surface2,
+          }}
+        >
+          {errorMessage || statusMessage}
+        </div>
+      )}
 
       <div
         style={{
           flex: 1,
-          display: 'flex',
-          gap: 8,
-          padding: 8,
-          overflowX: 'auto',
-          overflowY: 'hidden',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+          gap: 10,
+          padding: 12,
+          overflowY: 'auto',
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={handleDrop}
@@ -235,7 +215,7 @@ export function MediaBin() {
         {assets.length === 0 && (
           <div
             style={{
-              flex: 1,
+              gridColumn: '1 / -1',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -244,46 +224,58 @@ export function MediaBin() {
               color: C.textDim,
               fontSize: 11,
               border: `2px dashed ${C.border}`,
-              borderRadius: 8,
+              borderRadius: 14,
               cursor: 'pointer',
+              minHeight: 220,
+              background: C.surface2,
+              padding: '18px 16px',
+              textAlign: 'center',
             }}
             onClick={handleImport}
           >
             <Icon d={Icons.upload} size={24} color={C.border2} />
-            {loading ? 'Loading...' : 'Drop files here or click to import'}
+            <div>{loading ? 'Loading assets…' : 'Drop files here or click to import'}</div>
+            <div style={{ fontSize: 10, color: C.textMuted, maxWidth: 180, lineHeight: 1.6 }}>
+              Use Cut for the primary interview source. Use this bin for assembly assets that stay local to this browser.
+            </div>
           </div>
         )}
 
         {assets.map((asset) => (
-          <div
+          <button
             key={asset.id}
             onClick={() => addToTimeline(asset)}
-            draggable
+            draggable={!asset.sourceMissing}
             onDragStart={(e) => {
-              e.dataTransfer.setData('application/coedit-asset', asset.id);
+              if (asset.sourceMissing) {
+                e.preventDefault();
+                return;
+              }
+              setAssetDragData(e.dataTransfer, asset.id);
               e.dataTransfer.effectAllowed = 'copy';
             }}
             style={{
-              width: 120,
-              flexShrink: 0,
-              cursor: 'grab',
-              borderRadius: 6,
+              width: '100%',
+              cursor: asset.sourceMissing ? 'not-allowed' : 'grab',
+              borderRadius: 14,
               overflow: 'hidden',
               border: `1px solid ${C.border}`,
               background: C.surface2,
               transition: 'border-color 0.15s',
+              opacity: asset.sourceMissing ? 0.65 : 1,
+              textAlign: 'left',
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = C.accent;
+              (e.currentTarget as HTMLButtonElement).style.borderColor = asset.sourceMissing ? C.orange : C.accent;
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.borderColor = C.border;
+              (e.currentTarget as HTMLButtonElement).style.borderColor = C.border;
             }}
           >
             <div
               style={{
-                width: 120,
-                height: 68,
+                width: '100%',
+                height: 90,
                 background: asset.thumbnailUrl
                   ? `url(${asset.thumbnailUrl}) center/cover`
                   : C.surface3,
@@ -300,27 +292,42 @@ export function MediaBin() {
                 />
               )}
             </div>
-            <div style={{ padding: '4px 6px' }}>
+            <div style={{ padding: '10px 10px 12px' }}>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 11,
                   color: C.text,
                   overflow: 'hidden',
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
+                  fontWeight: 600,
+                  marginBottom: 4,
                 }}
               >
                 {asset.name}
               </div>
-              {asset.duration && (
-                <div style={{ fontSize: 8, color: C.textDim }}>
-                  {formatTimeShort(asset.duration)}
+              {asset.sourceMissing && (
+                <div style={{ fontSize: 9, color: C.orange, marginBottom: 3 }}>
+                  source missing on this browser
                 </div>
               )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 9, color: ELEMENT_COLORS[asset.type] || C.textDim, textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 700 }}>
+                  {asset.type}
+                </span>
+                {asset.duration && (
+                  <>
+                    <span style={{ fontSize: 9, color: C.textMuted }}>•</span>
+                    <span style={{ fontSize: 9, color: C.textDim }}>
+                      {formatTimeShort(asset.duration)}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
-    </div>
+    </aside>
   );
 }

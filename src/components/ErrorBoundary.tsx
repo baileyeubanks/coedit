@@ -20,7 +20,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[CoEdit] Uncaught error:', error, info.componentStack);
+    console.error('[Co-Cut] Uncaught error:', error, info.componentStack);
   }
 
   render() {
@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </h1>
           <p style={{ color: '#94a3b8', marginBottom: '1.5rem', maxWidth: '480px' }}>
-            CoEdit encountered an unexpected error. Your recent work has been auto-saved.
+            Co-Cut encountered an unexpected error. Reload to recover the last successful local save.
           </p>
           <pre style={{
             background: '#1e293b',

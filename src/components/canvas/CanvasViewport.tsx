@@ -8,6 +8,7 @@ import { useElementStore } from '../../store/elementStore';
 import { usePlaybackStore } from '../../store/playbackStore';
 import { useMediaStore } from '../../store/mediaStore';
 import { useTimelineStore } from '../../store/timelineStore';
+import { getAssetDragId, hasAssetDragType } from '../../config/product';
 // Canvas size now driven by uiStore (dynamic composition)
 import { clamp } from '../../utils/math';
 import { getAnimTransform, getExitAnimTransform } from '../../utils/animation';
@@ -276,7 +277,7 @@ export function CanvasViewport() {
   const onCanvasDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const assetId = e.dataTransfer.getData('application/coedit-asset');
+      const assetId = getAssetDragId(e.dataTransfer);
       if (!assetId) return;
       const asset = useMediaStore.getState().getAsset(assetId);
       if (!asset) return;
@@ -366,89 +367,173 @@ export function CanvasViewport() {
 
   return (
     <div
-      style={{ flex: 1, background: '#060a10', position: 'relative', overflow: 'hidden' }}
-      onWheel={onWheel}
-      onContextMenu={onContextMenu}
-      onDragOver={(e) => {
-        if (e.dataTransfer.types.includes('application/coedit-asset')) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'copy';
-        }
+      style={{
+        flex: 1,
+        minHeight: 0,
+        background: C.surface,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        display: 'flex',
+        flexDirection: 'column',
       }}
-      onDrop={onCanvasDrop}
     >
       <div
-        ref={canvasRef}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseUp}
         style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: `translate(-50%, -50%) scale(${displayScale})`,
-          transformOrigin: 'center center',
-          width: canvasWidth,
-          height: canvasHeight,
-          background: canvasBgColor,
-          borderRadius: 8,
-          boxShadow: `0 0 60px rgba(0,0,0,0.5), 0 0 0 1px ${C.border}`,
-          overflow: 'hidden',
-          backgroundImage: showGrid
-            ? `linear-gradient(${C.border}22 1px, transparent 1px), linear-gradient(90deg, ${C.border}22 1px, transparent 1px)`
-            : 'none',
-          backgroundSize: '40px 40px',
+          padding: '16px 18px 14px',
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
         }}
       >
-        {elements.map((el, idx) => renderElement(el, idx))}
-        <SubtitleOverlay />
-
-        {/* Resize handle */}
-        {selectedEl && (
+        <div>
           <div
             style={{
-              position: 'absolute',
-              left: selectedEl.x + selectedEl.width - 5,
-              top: selectedEl.y + selectedEl.height - 5,
-              width: 12,
-              height: 12,
-              background: C.accent,
-              borderRadius: 2,
-              cursor: 'nwse-resize',
-              zIndex: 9999,
-              border: `1px solid ${C.bg}`,
+              fontSize: 10,
+              color: C.copper,
+              textTransform: 'uppercase',
+              letterSpacing: 0.8,
+              fontWeight: 700,
+              marginBottom: 5,
             }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              resizeRef.current = { id: selectedEl.id };
-            }}
-          />
-        )}
-      </div>
+          >
+            Preview
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C.text, marginBottom: 4 }}>
+            Assembly Frame
+          </div>
+          <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.6 }}>
+            Drop media into the frame or onto the timeline to build the final composition.
+          </div>
+        </div>
 
-      {/* Zoom controls */}
-      <div style={{ position: 'absolute', bottom: 12, right: 12, display: 'flex', gap: 4 }}>
-        <Button small onClick={() => setZoom(zoom - 0.05)} style={{ fontSize: 14, padding: '2px 8px' }}>
-          -
-        </Button>
-        <span
+        <div
           style={{
-            fontSize: 10,
-            color: C.textDim,
             display: 'flex',
             alignItems: 'center',
-            padding: '0 6px',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
           }}
         >
-          {Math.round(zoom * 100)}%
-        </span>
-        <Button small onClick={() => setZoom(zoom + 0.05)} style={{ fontSize: 14, padding: '2px 8px' }}>
-          +
-        </Button>
-        <Button small onClick={() => setZoom(0.5)} style={{ fontSize: 10 }}>
-          Fit
-        </Button>
+          <span
+            style={{
+              padding: '6px 10px',
+              borderRadius: 999,
+              border: `1px solid ${C.border}`,
+              background: C.surface2,
+              fontSize: 10,
+              color: C.textDim,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {canvasWidth} × {canvasHeight}
+          </span>
+          <span
+            style={{
+              padding: '6px 10px',
+              borderRadius: 999,
+              border: `1px solid ${showGrid ? `${C.accent}44` : C.border}`,
+              background: showGrid ? `${C.accent}12` : C.surface2,
+              fontSize: 10,
+              color: showGrid ? C.accent : C.textDim,
+            }}
+          >
+            {showGrid ? 'Grid On' : 'Grid Off'}
+          </span>
+        </div>
+      </div>
+
+      <div
+        style={{ flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}
+        onWheel={onWheel}
+        onContextMenu={onContextMenu}
+        onDragOver={(e) => {
+          if (hasAssetDragType(e.dataTransfer)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+          }
+        }}
+        onDrop={onCanvasDrop}
+      >
+        <div
+          ref={canvasRef}
+          onMouseDown={onMouseDown}
+          onMouseMove={onMouseMove}
+          onMouseUp={onMouseUp}
+          onMouseLeave={onMouseUp}
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: `translate(-50%, -50%) scale(${displayScale})`,
+            transformOrigin: 'center center',
+            width: canvasWidth,
+            height: canvasHeight,
+            background: canvasBgColor,
+            borderRadius: 12,
+            boxShadow: `0 0 40px rgba(0,0,0,0.3), 0 0 0 1px ${C.border}`,
+            overflow: 'hidden',
+            backgroundImage: showGrid
+              ? `linear-gradient(${C.border}22 1px, transparent 1px), linear-gradient(90deg, ${C.border}22 1px, transparent 1px)`
+              : 'none',
+            backgroundSize: '40px 40px',
+          }}
+        >
+          {elements.map((el, idx) => renderElement(el, idx))}
+          <SubtitleOverlay />
+
+          {selectedEl && (
+            <div
+              style={{
+                position: 'absolute',
+                left: selectedEl.x + selectedEl.width - 5,
+                top: selectedEl.y + selectedEl.height - 5,
+                width: 12,
+                height: 12,
+                background: C.accent,
+                borderRadius: 2,
+                cursor: 'nwse-resize',
+                zIndex: 9999,
+                border: `1px solid ${C.bg}`,
+              }}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+                resizeRef.current = { id: selectedEl.id };
+              }}
+            />
+          )}
+        </div>
+
+        <div style={{ position: 'absolute', bottom: 14, right: 14, display: 'flex', gap: 4 }}>
+          <Button small onClick={() => setZoom(zoom - 0.05)} style={{ fontSize: 14, padding: '2px 8px' }}>
+            -
+          </Button>
+          <span
+            style={{
+              fontSize: 10,
+              color: C.textDim,
+              display: 'flex',
+              alignItems: 'center',
+              padding: '0 8px',
+              borderRadius: 999,
+              border: `1px solid ${C.border}`,
+              background: C.surface2,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}
+          >
+            {Math.round(zoom * 100)}%
+          </span>
+          <Button small onClick={() => setZoom(zoom + 0.05)} style={{ fontSize: 14, padding: '2px 8px' }}>
+            +
+          </Button>
+          <Button small onClick={() => setZoom(0.5)} style={{ fontSize: 10 }}>
+            Fit
+          </Button>
+        </div>
       </div>
     </div>
   );

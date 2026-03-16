@@ -1,5 +1,22 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ─── Content Co-op Brand Central — Design Tokens ─────────────────────────── */
+:root {
+  --cc-cream:      #f0ebe0;
+  --cc-parchment:  #faf6ef;
+  --cc-sand:       #d8cfc0;
+  --cc-ink:        #0b1928;
+  --cc-sapphire:   #1e4d8c;
+  --cc-periwinkle: #b3c8f0;
+  --cc-slate:      #485670;
+  --cc-copper:     #c4722a;
+  --cc-dark-bg:    #0b1928;
+  --font-sans:     'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif:    'Fraunces', Georgia, serif;
+  --font-mono:     'JetBrains Mono', 'SF Mono', monospace;
+  --radius:        14px;
+  --radius-pill:   999px;
+}
 
 * {
   margin: 0;
@@ -11,16 +28,20 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #060a10;
-  color: #e2e8f0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--cc-cream);
+  color: var(--cc-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  background-attachment: fixed;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
@@ -28,12 +49,12 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e2d3d;
+  background: var(--cc-sand);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a3f54;
+  background: var(--cc-slate);
 }
 
 input[type="number"]::-webkit-inner-spin-button,
@@ -43,4 +64,43 @@ input[type="number"]::-webkit-outer-spin-button {
 
 select {
   -webkit-appearance: none;
+  appearance: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+@media (max-width: 1200px) {
+  .cocut-edit-shell-bottom {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .cocut-edit-shell {
+    overflow: auto !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  .cocut-edit-shell-top,
+  .cocut-edit-shell-bottom,
+  .cocut-upload-shell {
+    grid-template-columns: 1fr !important;
+  }
+
+  .cocut-shell-utility-dock {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    align-items: stretch !important;
+  }
+
+  .cocut-shell-utility-panel {
+    width: 100% !important;
+    max-width: none !important;
+  }
 }

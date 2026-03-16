@@ -1,18 +1,3 @@
-import type { Element } from './element';
-import type { Track } from './timeline';
-
-export interface ProjectState {
-  id: string;
-  name: string;
-  createdAt: number;
-  updatedAt: number;
-  duration: number;
-  resolution: { width: number; height: number };
-  fps: number;
-  tracks: Track[];
-  elements: Element[];
-}
-
 export interface MediaAsset {
   id: string;
   name: string;
@@ -25,4 +10,6 @@ export interface MediaAsset {
   thumbnailUrl?: string;
   waveformData?: number[];
   blobKey: string;
+  fileBlob?: Blob | null;
+  sourceMissing?: boolean;
 }

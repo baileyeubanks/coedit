@@ -1,13 +1,8 @@
 /**
- * CoEdit AI Engine — White-labeled, model-agnostic AI service.
- *
- * Architecture:
- * - CoEdit/CoDeliver: Gemini Flash (fast, cheap, real-time suggestions)
- * - CoScript: GPT blend → Claude Opus (dual-model creative writing)
- * - All branded as "Co-op AI" — no vendor names exposed to users
+ * Co-Cut AI engine.
  *
  * The engine routes through a proxy endpoint so API keys never touch the client.
- * For local dev, direct API calls are supported with keys from env vars.
+ * For local development, direct API calls are still supported with env vars.
  */
 
 export type AIModel = 'flash' | 'opus' | 'gpt';
@@ -57,7 +52,7 @@ const MODEL_CONFIG: Record<AIModel, {
   },
 };
 
-// Default model for CoEdit features
+// Default model for Co-Cut features
 const DEFAULT_MODEL: AIModel = 'flash';
 
 class CoopAI {
@@ -118,7 +113,7 @@ class CoopAI {
     yield result.content;
   }
 
-  // --- CoEdit-specific AI features ---
+  // --- Co-Cut AI features ---
 
   /** Suggest a scene layout based on the current elements */
   async suggestLayout(elementDescriptions: string[]): Promise<string> {
@@ -330,5 +325,5 @@ class CoopAI {
   }
 }
 
-// Singleton — white-labeled as "Co-op AI"
+// Singleton backing the visible "Co-Cut AI" assistant surface.
 export const coopAI = new CoopAI();

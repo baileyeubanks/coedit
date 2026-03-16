@@ -1,77 +1,32 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState } from 'react';
 import { C } from '../../theme/colors';
-import { FONT_FAMILY, FONT_FAMILY_BRAND } from '../../theme/tokens';
+import { FONT_FAMILY_BRAND } from '../../theme/tokens';
 import { Icons } from '../../theme/icons';
 import { Icon } from '../ui/Icon';
 import { useCutStore } from '../../store/cutStore';
-import { transcribeViaAPI } from '../../services/whisperService';
-
-const ACCEPTED_TYPES = [
-  'audio/mp3', 'audio/mpeg', 'audio/mp4', 'audio/m4a', 'audio/x-m4a',
-  'audio/wav', 'audio/wave', 'audio/webm', 'audio/ogg',
-  'video/mp4', 'video/webm', 'video/ogg', 'video/quicktime',
-];
+import { usePersistenceStore } from '../../store/persistenceStore';
+import { runtimeConfig } from '../../config/runtime';
+import { useCutSourceWorkflow } from '../../hooks/useCutSourceWorkflow';
+import { CUT_SOURCE_ACCEPT_ATTRIBUTE } from '../../utils/localMedia';
 
 export function UploadZone() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  const setAudio = useCutStore((s) => s.setAudio);
-  const setTranscribing = useCutStore((s) => s.setTranscribing);
-  const setTranscript = useCutStore((s) => s.setTranscript);
+  const projectName = usePersistenceStore((s) => s.projectName);
+  const sourceError = useCutStore((s) => s.sourceError);
   const transcribing = useCutStore((s) => s.transcribing);
   const transcribeProgress = useCutStore((s) => s.transcribeProgress);
   const transcribePhase = useCutStore((s) => s.transcribePhase);
-
-  const handleFile = useCallback(
-    async (file: File) => {
-      setError(null);
-
-      if (!ACCEPTED_TYPES.includes(file.type) && !file.name.match(/\.(mp3|mp4|m4a|wav|webm|ogg|mov)$/i)) {
-        setError('Unsupported file type. Please upload an audio or video file.');
-        return;
-      }
-
-      const url = URL.createObjectURL(file);
-      setAudio(url, file.name);
-
-      const apiKey = (import.meta as any).env?.VITE_OPENAI_API_KEY;
-      if (!apiKey) {
-        // No API key — load file but skip transcription
-        setTranscript(null);
-        return;
-      }
-
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-
-      setTranscribing(true, 0, 'Starting...');
-
-      try {
-        const result = await transcribeViaAPI(
-          url,
-          (p) => setTranscribing(true, p.percent, p.message),
-          ctrl.signal,
-        );
-        setTranscript(result);
-      } catch (err: any) {
-        if (err.message === 'Transcription cancelled') return;
-        setError(err.message ?? 'Transcription failed');
-      } finally {
-        setTranscribing(false);
-      }
-    },
-    [setAudio, setTranscribing, setTranscript],
-  );
+  const { ingestSourceFile } = useCutSourceWorkflow();
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      void ingestSourceFile(file, { mode: 'new' });
+    }
   };
 
   const onDragOver = (e: React.DragEvent) => {
@@ -83,75 +38,179 @@ export function UploadZone() {
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (file) {
+      void ingestSourceFile(file, { mode: 'new' });
+    }
     e.target.value = '';
   };
 
+  const steps = [
+    {
+      title: 'Ingest the interview',
+      body: 'Drop a local audio or video source into Co-Cut so the session has a primary timeline anchor.',
+    },
+    {
+      title: 'Review timed transcript',
+      body: 'Co-Cut turns speech into clickable words so you can hunt for the strongest line instead of scrubbing blind.',
+    },
+    {
+      title: 'Save clean selects',
+      body: 'Mark the exact quote, save it to the clip bin, and move the best moments downstream into assembly.',
+    },
+  ];
+
   return (
-    <div
+    <section
+      className="cocut-upload-shell"
       style={{
         flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: C.bg,
-        fontFamily: FONT_FAMILY,
+        minHeight: 0,
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: 14,
       }}
     >
-      {/* Drop zone */}
+      <div
+        style={{
+          borderRadius: 14,
+          border: `1px solid ${C.border}`,
+          background: C.surface,
+          padding: '28px 28px 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 10,
+              color: C.copper,
+              fontWeight: 700,
+              letterSpacing: 0.9,
+              textTransform: 'uppercase',
+              marginBottom: 12,
+            }}
+          >
+            Co-Cut Editor
+          </div>
+          <div
+            style={{
+              fontFamily: FONT_FAMILY_BRAND,
+              fontSize: 48,
+              lineHeight: 0.95,
+              color: C.text,
+              marginBottom: 16,
+              maxWidth: 520,
+            }}
+          >
+            Shape the story from transcript to select.
+          </div>
+          <div style={{ fontSize: 15, color: C.textDim, lineHeight: 1.8, maxWidth: 560 }}>
+            {projectName} is ready for source media. Attach one local interview file to this project, turn speech into a structured transcript, then save the strongest quotes before you move into assembly.
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 10, marginTop: 28 }}>
+          {steps.map((step, index) => (
+            <div
+              key={step.title}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '40px minmax(0, 1fr)',
+                gap: 12,
+                padding: '14px 16px',
+                borderRadius: 14,
+                border: `1px solid ${C.border}`,
+                background: C.bg,
+              }}
+            >
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  background: `${C.accent}14`,
+                  border: `1px solid ${C.accent}22`,
+                  color: C.accent,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 14,
+                  fontWeight: 700,
+                }}
+              >
+                {index + 1}
+              </div>
+              <div>
+                <div style={{ fontSize: 14, color: C.text, fontWeight: 700, marginBottom: 4 }}>
+                  {step.title}
+                </div>
+                <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.7 }}>
+                  {step.body}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onClick={() => !transcribing && fileInputRef.current?.click()}
         style={{
-          width: 480,
-          height: 260,
-          border: `2px dashed ${dragging ? C.accent : C.border2}`,
-          borderRadius: 16,
-          background: dragging ? `${C.accent}10` : C.surface,
+          position: 'relative',
+          borderRadius: 14,
+          border: `1px solid ${dragging ? `${C.accent}66` : C.border}`,
+          background: dragging ? `${C.accent}08` : C.surface,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 16,
+          gap: 18,
+          padding: '28px 30px',
           cursor: transcribing ? 'default' : 'pointer',
-          transition: 'all 0.15s',
-          position: 'relative',
+          transition: 'all 0.15s ease',
           overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         }}
       >
-        {/* Transcription progress overlay */}
         {transcribing && (
           <div
             style={{
               position: 'absolute',
               inset: 0,
-              background: `${C.bg}e0`,
+              background: 'rgba(250, 246, 239, 0.92)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 12,
+              gap: 14,
+              zIndex: 1,
+              padding: 24,
             }}
           >
             <div
               style={{
                 fontFamily: FONT_FAMILY_BRAND,
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: 22,
                 color: C.text,
               }}
             >
-              Transcribing...
+              Building your transcript
+            </div>
+            <div style={{ fontSize: 12, color: C.textDim }}>
+              {transcribePhase || 'Processing source'}
             </div>
             <div
               style={{
-                width: 220,
-                height: 3,
+                width: 260,
+                height: 4,
                 background: C.surface3,
-                borderRadius: 2,
+                borderRadius: 999,
                 overflow: 'hidden',
               }}
             >
@@ -160,100 +219,119 @@ export function UploadZone() {
                   height: '100%',
                   width: `${transcribeProgress}%`,
                   background: `linear-gradient(90deg, ${C.accent}, ${C.accent2})`,
-                  borderRadius: 2,
-                  transition: 'width 0.3s',
+                  borderRadius: 999,
+                  transition: 'width 0.3s ease',
                 }}
               />
             </div>
-            <div style={{ fontSize: 10, color: C.textDim }}>{transcribePhase}</div>
           </div>
         )}
 
-        {/* Drop icon */}
         <div
           style={{
-            width: 56,
-            height: 56,
+            width: 72,
+            height: 72,
             borderRadius: 14,
-            background: C.surface2,
-            border: `1px solid ${C.border}`,
+            background: `${C.accent}10`,
+            border: `1px solid ${C.accent}18`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Icon d={Icons.upload} size={24} color={C.accent2} />
+          <Icon d={Icons.upload} size={30} color={C.accent} />
         </div>
 
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ textAlign: 'center', maxWidth: 420 }}>
           <div
             style={{
               fontFamily: FONT_FAMILY_BRAND,
-              fontSize: 15,
-              fontWeight: 700,
+              fontSize: 30,
+              lineHeight: 1,
               color: C.text,
-              marginBottom: 6,
+              marginBottom: 10,
             }}
           >
-            drop your interview here
+            Drop source media here
           </div>
-          <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.6 }}>
-            audio or video · mp3, mp4, m4a, wav, webm
-            <br />
-            <span style={{ color: C.textMuted }}>up to 25MB for auto-transcription</span>
+          <div style={{ fontSize: 13, color: C.textDim, lineHeight: 1.8 }}>
+            Audio or video. MP3, MP4, M4A, WAV, WEBM, OGG, or MOV. Co-Cut binds this local file to the current draft and keeps the heavy source on this browser.
           </div>
         </div>
 
         <div
           style={{
-            fontSize: 10,
-            color: C.accent2,
-            fontWeight: 500,
-            letterSpacing: 0.3,
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            justifyContent: 'center',
           }}
         >
-          click to browse
+          {['audio or video', 'local-only source', 'transcript-ready'].map((tag) => (
+            <span
+              key={tag}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 999,
+                border: `1px solid ${C.border}`,
+                background: C.surface2,
+                fontSize: 10,
+                color: C.textDim,
+                textTransform: 'uppercase',
+                letterSpacing: 0.7,
+                fontWeight: 700,
+              }}
+            >
+              {tag}
+            </span>
+          ))}
         </div>
+
+        <div style={{ fontSize: 11, color: C.accent, fontWeight: 600, letterSpacing: 0.3 }}>
+          Click to browse or drag a file into the session
+        </div>
+
+        {sourceError && (
+          <div
+            style={{
+              marginTop: 6,
+              padding: '10px 14px',
+              background: `${C.error}16`,
+              border: `1px solid ${C.error}33`,
+              borderRadius: 12,
+              fontSize: 11,
+              color: C.error,
+              maxWidth: 420,
+              textAlign: 'center',
+            }}
+          >
+            {sourceError}
+          </div>
+        )}
+
+        {!runtimeConfig.aiApiKeys.openai && (
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              color: C.textMuted,
+              textAlign: 'center',
+              lineHeight: 1.7,
+              maxWidth: 420,
+            }}
+          >
+            Add <code style={{ color: C.accent2 }}>VITE_OPENAI_API_KEY</code> to <code style={{ color: C.textDim }}>.env.local</code> to enable timed transcription in this browser.
+          </div>
+        )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={CUT_SOURCE_ACCEPT_ATTRIBUTE}
+          style={{ display: 'none' }}
+          onChange={onFileChange}
+        />
       </div>
-
-      {error && (
-        <div
-          style={{
-            marginTop: 16,
-            padding: '8px 14px',
-            background: `${C.error}18`,
-            border: `1px solid ${C.error}44`,
-            borderRadius: 8,
-            fontSize: 11,
-            color: C.error,
-            maxWidth: 480,
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* No API key hint */}
-      {!(import.meta as any).env?.VITE_OPENAI_API_KEY && (
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: 10,
-            color: C.textMuted,
-            textAlign: 'center',
-          }}
-        >
-          Add <code style={{ color: C.accent2 }}>VITE_OPENAI_API_KEY</code> to .env for auto-transcription
-        </div>
-      )}
-
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="audio/*,video/*,.mp3,.mp4,.m4a,.wav,.webm,.ogg,.mov"
-        style={{ display: 'none' }}
-        onChange={onFileChange}
-      />
-    </div>
+    </section>
   );
 }

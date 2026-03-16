@@ -6,158 +6,195 @@ import { Button } from '../ui/Button';
 import { useCutStore } from '../../store/cutStore';
 import { formatTime } from '../../utils/formatTime';
 
-export function SoundbiteList() {
+export function SoundbiteList({ fullWidth = false }: { fullWidth?: boolean }) {
   const soundbites = useCutStore((s) => s.soundbites);
+  const selectedSoundbiteId = useCutStore((s) => s.selectedSoundbiteId);
+  const markers = useCutStore((s) => s.markers);
   const deleteSoundbite = useCutStore((s) => s.deleteSoundbite);
-  const seekToTime = useCutStore((s) => s.seekToTime);
-  const setMarkerIn = useCutStore((s) => s.setMarkerIn);
-  const setMarkerOut = useCutStore((s) => s.setMarkerOut);
+  const selectSoundbite = useCutStore((s) => s.selectSoundbite);
   const setShowExportModal = useCutStore((s) => s.setShowExportModal);
   const setShowSaveModal = useCutStore((s) => s.setShowSaveModal);
 
-  const jumpToClip = (start: number, end: number) => {
-    seekToTime(start);
-    setMarkerIn(start);
-    setMarkerOut(end);
-  };
+  const totalDuration = soundbites.reduce((total, clip) => total + (clip.end - clip.start), 0);
+  const hasSelection = markers.in !== null && markers.out !== null;
 
   return (
-    <div
+    <aside
       style={{
-        width: 280,
+        minHeight: 0,
+        width: '100%',
+        maxWidth: fullWidth ? 'none' : 340,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
+        borderRadius: 14,
+        border: `1px solid ${C.border}`,
         background: C.surface,
-        borderLeft: `1px solid ${C.border}`,
+        overflow: 'hidden',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Header */}
       <div
         style={{
-          padding: '8px 14px',
+          padding: '16px 18px 14px',
+          borderBottom: `1px solid ${C.border}`,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 10,
+              color: C.copper,
+              fontWeight: 700,
+              letterSpacing: 0.8,
+              textTransform: 'uppercase',
+              marginBottom: 6,
+            }}
+          >
+            Clip Bin
+          </div>
+          <div style={{ fontSize: 18, color: C.text, fontWeight: 700, marginBottom: 4 }}>
+            Saved Selects
+          </div>
+          <div style={{ fontSize: 12, color: C.textDim, lineHeight: 1.6 }}>
+            Load a clip to restore its markers into review, or preview it to audition that exact range against the source.
+          </div>
+          {selectedSoundbiteId && (
+            <div style={{ fontSize: 11, color: C.accent, marginTop: 8 }}>
+              Active clip is driving the current selection.
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            padding: '8px 10px',
+            borderRadius: 16,
+            border: `1px solid ${C.border}`,
+            background: C.surface2,
+            minWidth: 88,
+            textAlign: 'right',
+          }}
+        >
+          <div style={{ fontSize: 10, color: C.textDim, textTransform: 'uppercase', letterSpacing: 0.7 }}>
+            Clips
+          </div>
+          <div style={{ fontSize: 18, color: C.text, fontWeight: 700, lineHeight: 1.1 }}>
+            {soundbites.length}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          padding: '12px 18px',
           borderBottom: `1px solid ${C.border}`,
           display: 'flex',
           alignItems: 'center',
-          gap: 6,
-          flexShrink: 0,
+          justifyContent: 'space-between',
+          gap: 10,
+          fontSize: 11,
+          color: C.textDim,
         }}
       >
-        <span
-          style={{
-            fontSize: 10,
-            color: C.textDim,
-            fontWeight: 600,
-            letterSpacing: 0.5,
-            textTransform: 'uppercase' as const,
-            fontFamily: FONT_FAMILY,
-            flex: 1,
-          }}
-        >
-          soundbites
-          {soundbites.length > 0 && (
-            <span
-              style={{
-                marginLeft: 6,
-                background: C.accent,
-                color: '#fff',
-                borderRadius: 10,
-                padding: '1px 6px',
-                fontSize: 9,
-                fontWeight: 700,
-              }}
-            >
-              {soundbites.length}
-            </span>
-          )}
+        <span>Total selected runtime</span>
+        <span style={{ fontFamily: FONT_FAMILY_MONO, color: C.text }}>
+          {formatTime(totalDuration)}
         </span>
-
-        {soundbites.length > 0 && (
-          <Button small onClick={() => setShowExportModal(true)} title="Export all (⌘E)">
-            <Icon d={Icons.download} size={11} />
-            Export
-          </Button>
-        )}
       </div>
 
-      {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
         {soundbites.length === 0 ? (
           <div
             style={{
-              padding: '40px 16px',
+              height: '100%',
+              minHeight: 240,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               textAlign: 'center',
-              color: C.textMuted,
-              fontSize: 11,
-              fontFamily: FONT_FAMILY,
+              padding: '18px 16px',
+              borderRadius: 14,
+              border: `1px dashed ${C.border}`,
+              color: C.textDim,
+              fontSize: 12,
               lineHeight: 1.8,
+              fontFamily: FONT_FAMILY,
+              background: C.surface2,
             }}
           >
             No clips saved yet.
             <br />
-            <span style={{ fontSize: 10 }}>
-              Press <kbd style={{ color: C.accent2 }}>I</kbd> /{' '}
-              <kbd style={{ color: C.orange }}>O</kbd> to mark,
-              <br />
-              then <kbd style={{ color: C.text }}>Enter</kbd> to save.
-            </span>
+            Frame a quote from the transcript or waveform, then save it here so it stays reusable downstream.
           </div>
         ) : (
-          <div style={{ padding: '6px 0' }}>
-            {soundbites.map((sb, idx) => (
+          <div
+            style={{
+              display: 'grid',
+              gap: 10,
+              gridTemplateColumns: fullWidth ? 'repeat(auto-fit, minmax(220px, 1fr))' : undefined,
+            }}
+          >
+            {soundbites.map((clip, index) => (
               <div
-                key={sb.id}
+                key={clip.id}
+                onClick={() => selectSoundbite(clip.id)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    selectSoundbite(clip.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 style={{
-                  padding: '8px 14px',
-                  borderBottom: `1px solid ${C.border}`,
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '14px 14px 12px',
+                  borderRadius: 14,
+                  border: `1px solid ${selectedSoundbiteId === clip.id ? `${C.accent}55` : C.border}`,
+                  background: selectedSoundbiteId === clip.id ? `${C.accent}10` : C.surface2,
                   cursor: 'pointer',
-                  transition: 'background 0.1s',
+                  transition: 'all 0.14s ease',
+                  boxShadow: selectedSoundbiteId === clip.id ? `0 14px 28px ${C.accentGlow}` : 'none',
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = C.surfaceHover;
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background = 'transparent';
-                }}
-                onClick={() => jumpToClip(sb.start, sb.end)}
               >
-                {/* Number + label */}
                 <div
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
-                    gap: 6,
-                    marginBottom: 4,
+                    gap: 10,
+                    marginBottom: 8,
                   }}
                 >
                   <span
                     style={{
-                      fontSize: 9,
+                      fontSize: 10,
                       color: C.accent,
                       fontFamily: FONT_FAMILY_MONO,
                       fontWeight: 700,
-                      flexShrink: 0,
                       marginTop: 1,
                     }}
                   >
-                    {String(idx + 1).padStart(2, '0')}
+                    {String(index + 1).padStart(2, '0')}
                   </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: C.text,
-                      fontFamily: FONT_FAMILY,
-                      fontWeight: 600,
-                      flex: 1,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {sb.label}
-                  </span>
+
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 3 }}>
+                      {clip.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.6 }}>
+                      {clip.text || 'Saved clip without transcript excerpt'}
+                    </div>
+                  </div>
+
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteSoundbite(sb.id);
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      deleteSoundbite(clip.id);
                     }}
                     style={{
                       background: 'none',
@@ -166,76 +203,95 @@ export function SoundbiteList() {
                       color: C.textMuted,
                       padding: 0,
                       lineHeight: 1,
-                      flexShrink: 0,
                     }}
                     title="Delete clip"
                   >
-                    <Icon d={Icons.trash} size={11} />
+                    <Icon d={Icons.trash} size={12} />
                   </button>
                 </div>
 
-                {/* Timestamps */}
                 <div
                   style={{
-                    fontSize: 9,
-                    color: C.accent2,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 10,
+                    color: C.textDim,
                     fontFamily: FONT_FAMILY_MONO,
-                    marginBottom: sb.text ? 4 : 0,
                   }}
                 >
-                  {formatTime(sb.start)} → {formatTime(sb.end)}{' '}
-                  <span style={{ color: C.textMuted }}>
-                    ({formatTime(sb.end - sb.start)})
+                  <span style={{ color: C.accent }}>
+                    {formatTime(clip.start)} → {formatTime(clip.end)}
                   </span>
+                  <span style={{ color: C.textMuted }}>•</span>
+                  <span>{formatTime(clip.end - clip.start)}</span>
                 </div>
 
-                {/* Text excerpt */}
-                {sb.text && (
-                  <div
-                    style={{
-                      fontSize: 10,
-                      color: C.textDim,
-                      fontFamily: FONT_FAMILY,
-                      lineHeight: 1.5,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical' as const,
-                      overflow: 'hidden',
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    marginTop: 10,
+                    paddingTop: 10,
+                    borderTop: `1px solid ${C.border}`,
+                  }}
+                >
+                  <Button
+                    small
+                    active={selectedSoundbiteId === clip.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectSoundbite(clip.id);
                     }}
+                    style={{ justifyContent: 'center' }}
                   >
-                    "{sb.text}"
-                  </div>
-                )}
+                    <Icon d={Icons.layers} size={11} />
+                    Load
+                  </Button>
+                  <Button
+                    small
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      selectSoundbite(clip.id, { preview: true });
+                    }}
+                    style={{ justifyContent: 'center' }}
+                  >
+                    <Icon d={Icons.play} size={11} />
+                    Preview
+                  </Button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Footer actions */}
       <div
         style={{
-          padding: '8px 14px',
+          padding: '12px 14px 14px',
           borderTop: `1px solid ${C.border}`,
           display: 'flex',
-          gap: 6,
-          flexShrink: 0,
+          gap: 8,
         }}
       >
         <Button
           small
           accent
           onClick={() => setShowSaveModal(true)}
+          disabled={!hasSelection}
           style={{ flex: 1, justifyContent: 'center' }}
         >
-          <Icon d={Icons.plus} size={11} /> New Clip
+          <Icon d={Icons.plus} size={12} /> New Clip
         </Button>
-        {soundbites.length > 0 && (
-          <Button small onClick={() => setShowExportModal(true)}>
-            <Icon d={Icons.download} size={11} />
-          </Button>
-        )}
+        <Button
+          small
+          onClick={() => setShowExportModal(true)}
+          disabled={soundbites.length === 0}
+          style={{ justifyContent: 'center' }}
+        >
+          <Icon d={Icons.download} size={12} /> Export
+        </Button>
       </div>
-    </div>
+    </aside>
   );
 }

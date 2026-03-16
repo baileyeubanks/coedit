@@ -1,16 +1,16 @@
-export const FONT_FAMILY = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-export const FONT_FAMILY_BRAND = "'Space Grotesk', 'Inter', sans-serif";
+export const FONT_FAMILY = "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+export const FONT_FAMILY_BRAND = "'Fraunces', Georgia, 'Times New Roman', serif";
 export const FONT_FAMILY_MONO = "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace";
 
 export const FONT_FAMILIES = [
-  'Inter', 'Space Grotesk', 'Georgia', 'Courier New', 'Arial Black',
+  'Plus Jakarta Sans', 'Fraunces', 'Inter', 'Georgia', 'Courier New', 'Arial Black',
   'Trebuchet MS', 'Impact', 'Palatino', 'Garamond', 'Verdana', 'Roboto',
 ] as const;
 
 export const TRACK_HEIGHT = 44;
 export const LAYER_PANEL_WIDTH = 180;
 export const PROPERTIES_PANEL_WIDTH = 260;
-export const TOOLBAR_HEIGHT = 44;
+export const TOOLBAR_HEIGHT = 64;
 export const TIMELINE_MIN_HEIGHT = 200;
 export const MEDIA_BIN_HEIGHT = 180;
 

@@ -15,7 +15,7 @@ export function Button({ children, active, accent, small, danger, style, ...prop
   const bg = active
     ? C.accent
     : danger
-      ? hovered ? C.red + '33' : 'transparent'
+      ? hovered ? C.red + '18' : 'transparent'
       : hovered
         ? C.surface3
         : accent
@@ -26,10 +26,10 @@ export function Button({ children, active, accent, small, danger, style, ...prop
     <button
       style={{
         background: bg,
-        color: active ? '#fff' : danger ? C.red : C.text,
+        color: active ? '#ffffff' : danger ? C.red : C.text,
         border: `1px solid ${active ? C.accent : danger ? C.red + '44' : C.border}`,
-        borderRadius: 6,
-        padding: small ? '3px 8px' : '6px 12px',
+        borderRadius: 8,
+        padding: small ? '4px 10px' : '6px 14px',
         fontSize: small ? 11 : 12,
         cursor: props.disabled ? 'not-allowed' : 'pointer',
         display: 'inline-flex',
@@ -37,6 +37,7 @@ export function Button({ children, active, accent, small, danger, style, ...prop
         gap: 5,
         transition: 'all 0.15s',
         fontFamily: FONT_FAMILY,
+        fontWeight: 600,
         opacity: props.disabled ? 0.4 : 1,
         ...style,
       }}

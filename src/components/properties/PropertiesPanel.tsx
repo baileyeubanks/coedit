@@ -37,11 +37,26 @@ export function PropertiesPanel() {
       <div
         style={{
           width: PROPERTIES_PANEL_WIDTH,
+          minHeight: 0,
           background: C.surface,
-          borderLeft: `1px solid ${C.border}`,
+          border: `1px solid ${C.border}`,
+          borderRadius: 14,
           flexShrink: 0,
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
         }}
       >
+        <div style={{ padding: '16px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 10, color: C.copper, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 5 }}>
+            Inspector
+          </div>
+          <div style={{ fontSize: 15, color: C.text, fontWeight: 700, marginBottom: 4 }}>
+            Properties
+          </div>
+          <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+            Select a layer to inspect its timing, style, and animation.
+          </div>
+        </div>
         <div style={{ padding: 20, color: C.textDim, fontSize: 12, textAlign: 'center' }}>
           <Icon
             d={Icons.move}
@@ -61,13 +76,28 @@ export function PropertiesPanel() {
     <div
       style={{
         width: PROPERTIES_PANEL_WIDTH,
+        minHeight: 0,
         background: C.surface,
-        borderLeft: `1px solid ${C.border}`,
+        border: `1px solid ${C.border}`,
+        borderRadius: 14,
         overflowY: 'auto',
         flexShrink: 0,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}
     >
       <div style={{ padding: 12, fontSize: 11 }}>
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: C.copper, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, marginBottom: 5 }}>
+            Inspector
+          </div>
+          <div style={{ fontSize: 15, color: C.text, fontWeight: 700, marginBottom: 3 }}>
+            {selected.name || selected.type}
+          </div>
+          <div style={{ fontSize: 11, color: C.textDim, lineHeight: 1.5 }}>
+            Adjust geometry, timing, and finish for the selected layer.
+          </div>
+        </div>
+
         {/* Tab switcher */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
           {(['properties', 'animate', 'filters'] as const).map((tab) => (

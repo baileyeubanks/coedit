@@ -6,14 +6,20 @@ import { Icon } from '../ui/Icon';
 import { Button } from '../ui/Button';
 import { useCutStore } from '../../store/cutStore';
 import { formatTime } from '../../utils/formatTime';
+import { buildClipLabel, getSelectionText, getSelectionWordCount } from '../../utils/cutSelection';
 
 export function SaveSoundbiteModal() {
-  const [label, setLabel] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
   const markers = useCutStore((s) => s.markers);
+  const transcript = useCutStore((s) => s.transcript);
+  const soundbites = useCutStore((s) => s.soundbites);
   const saveSoundbite = useCutStore((s) => s.saveSoundbite);
   const setShowSaveModal = useCutStore((s) => s.setShowSaveModal);
+  const selectionText = getSelectionText(transcript, markers, 40);
+  const selectionWordCount = getSelectionWordCount(transcript, markers);
+  const suggestedLabel = buildClipLabel(selectionText, soundbites.length + 1);
+
+  const [label, setLabel] = useState(suggestedLabel);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const dur =
     markers.in !== null && markers.out !== null ? markers.out - markers.in : null;
@@ -22,9 +28,12 @@ export function SaveSoundbiteModal() {
     inputRef.current?.focus();
   }, []);
 
+  useEffect(() => {
+    setLabel(suggestedLabel);
+  }, [suggestedLabel]);
+
   const handleSave = () => {
-    if (!label.trim()) return;
-    saveSoundbite(label.trim());
+    saveSoundbite(label.trim() || suggestedLabel);
     setLabel('');
   };
 
@@ -70,7 +79,7 @@ export function SaveSoundbiteModal() {
         >
           <Icon d={Icons.wand} size={13} color={C.accent} />
           <span style={{ fontSize: 12, fontWeight: 700, color: C.text, flex: 1 }}>
-            save soundbite
+            save clip
           </span>
           <button
             onClick={() => setShowSaveModal(false)}
@@ -111,6 +120,36 @@ export function SaveSoundbiteModal() {
             </div>
           )}
 
+          <div
+            style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
+              background: C.surface2,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 9,
+                color: C.textDim,
+                marginBottom: 6,
+                letterSpacing: 0.4,
+                textTransform: 'uppercase' as const,
+              }}
+            >
+              Transcript Excerpt
+            </div>
+            <div style={{ fontSize: 12, color: C.text, lineHeight: 1.7 }}>
+              {selectionText || 'No transcript excerpt matched this range yet.'}
+            </div>
+            {selectionWordCount > 0 && (
+              <div style={{ fontSize: 10, color: C.textDim, marginTop: 6 }}>
+                {selectionWordCount} word{selectionWordCount === 1 ? '' : 's'} inside the marked range
+              </div>
+            )}
+          </div>
+
           {/* Label input */}
           <div style={{ marginBottom: 12 }}>
             <div
@@ -129,7 +168,7 @@ export function SaveSoundbiteModal() {
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="e.g. Opening hook, Key stat, Best quote..."
+              placeholder={suggestedLabel}
               style={{
                 width: '100%',
                 background: C.surface2,
@@ -142,7 +181,10 @@ export function SaveSoundbiteModal() {
                 fontFamily: FONT_FAMILY,
                 boxSizing: 'border-box',
               }}
-            />
+              />
+            <div style={{ fontSize: 10, color: C.textMuted, marginTop: 6, lineHeight: 1.5 }}>
+              Default label is pulled from the selected transcript text. Edit it if you want a tighter clip name.
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 8 }}>
@@ -153,7 +195,6 @@ export function SaveSoundbiteModal() {
               small
               accent
               onClick={handleSave}
-              disabled={!label.trim()}
               style={{ flex: 2, justifyContent: 'center' }}
             >
               <Icon d={Icons.plus} size={11} /> Save Clip
