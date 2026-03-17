@@ -3,9 +3,18 @@
 ## Canonical Source
 
 - Repo: `/Users/baileyeubanks/Desktop/Projects/contentco-op/cocut`
+- Current GitHub / Coolify repo identity: `baileyeubanks/coedit`
 - Framework: Vite + React
 - Default port: `4104`
 - Health endpoint: `/health.json`
+
+## Live Publishing Rule
+
+- Live branch: `main`
+- Live source control: GitHub
+- Live deploy plane: Coolify webhook-driven rebuild from `baileyeubanks/coedit`
+- Product name stays `Co-Cut`; `coedit` is the current repo identity only
+- Standard publish path: clean repo -> `git push origin main` -> Coolify auto-deploy -> `/health.json` verify
 
 ## Required Environment
 
