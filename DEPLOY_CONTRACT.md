@@ -37,7 +37,7 @@ Required deploy-time headers on the public edge:
 
 - Dockerfile: `/Users/baileyeubanks/Desktop/Projects/contentco-op/cocut/Dockerfile`
 - nginx config: `/Users/baileyeubanks/Desktop/Projects/contentco-op/cocut/nginx.conf`
-- Exposed port: `80` in the production container (`4104` remains the local dev port)
+- Exposed ports: `80` for public ingress and `4104` for the existing Coolify healthcheck (`4104` remains the local dev port too)
 - Health probe: `GET /health.json`
 
 ## Coolify Notes
