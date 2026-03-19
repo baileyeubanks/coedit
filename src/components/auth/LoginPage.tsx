@@ -215,10 +215,10 @@ export function LoginPage() {
               </span>
             </div>
             <a
-              href="https://contentco-op.com"
+              href="https://contentco-op.com/suite#co-cut"
               style={{ fontSize: '.72rem', color: B.slate, textDecoration: 'none', letterSpacing: '.04em', fontFamily: SANS }}
             >
-              contentco-op.com ↗
+              suite overview ↗
             </a>
           </div>
 
@@ -231,7 +231,7 @@ export function LoginPage() {
             }}>
               <div style={{ width: 20, height: 2, background: B.copper, borderRadius: 2 }} />
               <span style={{ fontFamily: SANS, fontSize: '.68rem', fontWeight: 700, color: B.copper, letterSpacing: '.16em', textTransform: 'uppercase' }}>
-                Editor
+                Step 2 / Editorial accelerator
               </span>
             </div>
 
@@ -242,12 +242,12 @@ export function LoginPage() {
             </h1>
 
             <p style={{ fontFamily: SANS, fontSize: '.9rem', color: B.slate, lineHeight: 1.65, maxWidth: 380, margin: '0 0 2rem' }}>
-              Drop an interview. Review the timed transcript. Save the strongest quotes before you cut a single frame.
+              Drop an interview. Review the timed transcript. Save the strongest quotes before you cut a single frame. Built for executive messaging, not generic AI editing theater.
             </p>
 
             {/* Trust chips */}
             <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-              {['Local-first · no upload required', 'Cloud sync on demand', 'FFmpeg in-browser export'].map((chip) => (
+              {['Transcript + sound-bite pool', 'Captions + export presets', 'Assisted polish, not auto slop'].map((chip) => (
                 <span key={chip} style={{
                   fontFamily: SANS,
                   fontSize: '.7rem',
@@ -286,6 +286,9 @@ export function LoginPage() {
               <h2 style={{ fontFamily: SERIF, fontSize: '1.5rem', fontWeight: 700, color: B.text, margin: 0, letterSpacing: '-.02em' }}>
                 Open your editor.
               </h2>
+              <p style={{ fontFamily: SANS, fontSize: '.78rem', color: B.textMuted, lineHeight: 1.6, margin: '.65rem 0 0' }}>
+                Co-Cut is the live editing core in the suite today: timed transcript workflow, sound-bite selection, captions, lower thirds, and export variants.
+              </p>
             </div>
 
             {/* Error */}
@@ -358,7 +361,13 @@ export function LoginPage() {
 
             {/* Microcopy */}
             <p style={{ marginTop: '1.25rem', fontFamily: SANS, fontSize: '.72rem', color: B.textMuted, lineHeight: 1.6, textAlign: 'center' }}>
-              Local drafts stay in this browser. Cloud sync optional.
+              Local drafts stay in this browser. Cloud sync is optional. Music-guided formula and brand extraction should still be described as assisted or beta.
+            </p>
+
+            <p style={{ marginTop: '.5rem', fontFamily: SANS, fontSize: '.72rem', color: B.periwinkle, lineHeight: 1.6, textAlign: 'center' }}>
+              <a href="https://contentco-op.com/suite#co-cut" style={{ color: 'inherit', textDecoration: 'none' }}>
+                See the full Co-Apps workflow ↗
+              </a>
             </p>
 
           </div>
